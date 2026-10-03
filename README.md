@@ -18,12 +18,30 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-environment.p
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-dotnet.ps1
 ```
 
+上游基线若缺少 4.7.2 开发者包，可恢复精确引用程序集到工作区：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-reference-assemblies.ps1
+```
+
 ## 上游基线
 
 上游构建入口和限制：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-upstream.ps1
+```
+
+当前 Build Tools 未注册上游未使用的 `stdole` COM 类型库时，可显式运行隔离验证：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-upstream.ps1 -SkipUnusedStdoleComReference
+```
+
+恢复上游 NuGet 包并运行运动、显示器和 WinForms 运行时测试：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
 ```
 
 该命令不会修改系统或用户桌面。当前机器缺少 .NET Framework 4.7.2 引用程序集，因此原版构建会报告 MSB3644；安装开发者包后可重跑并把结果记录到 `docs/STATUS.md`。

@@ -10,4 +10,7 @@ if (Test-Path -LiteralPath $msbuild) { Write-Output "MSBuild: $msbuild" } else {
 if (Test-Path -LiteralPath (Join-Path $repo 'vendor\esheep')) { Write-Output "Upstream snapshot: present" } else { throw 'vendor/esheep is missing.' }
 $upstreamCommit = (& git -C $repo rev-parse upstream/master 2>$null).Trim()
 if ($LASTEXITCODE -eq 0) { Write-Output "Upstream commit: $upstreamCommit" } else { Write-Warning 'upstream/master is not available.' }
-Write-Output "Framework 4.7.2 targeting pack: $(Test-Path -LiteralPath 'C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2')"
+$systemFramework = Test-Path -LiteralPath 'C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.dll'
+$workspaceFramework = Test-Path -LiteralPath (Join-Path $repo '.tools\reference-assemblies\build\.NETFramework\v4.7.2\System.dll')
+Write-Output "Framework 4.7.2 system targeting pack: $systemFramework"
+Write-Output "Framework 4.7.2 workspace references: $workspaceFramework"

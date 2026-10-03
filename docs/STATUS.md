@@ -17,7 +17,9 @@
 
 - `git fetch upstream`：通过，远程 master 可用。
 - `git rev-parse upstream/master`：得到固定提交 `e2933305157a34818f47d238c74607593d81816d`。
-- 上游 `DesktopPet_Portable.csproj` MSBuild：未通过，错误 `MSB3644`，缺少 .NET Framework 4.7.2 引用程序集；未安装系统级开发者包。
+- 上游 `DesktopPet_Portable.csproj` 初次 MSBuild：错误 `MSB3644`，缺少 .NET Framework 4.7.2 引用程序集；随后已安装 4.8.1 Developer Pack、NuGet 7.9，并恢复精确 4.7.2 引用程序集到工作区。
+- 上游在引用程序集齐备后继续失败于未使用的 `stdole` COMReference（MSB4181/MSB3283，x86/x64 一致）；可用显式 `-SkipUnusedStdoleComReference` 做不修改上游文件的隔离构建验证。
+- 使用隔离项目副本构建后，x64 和 x86 均生成 `DesktopPet.exe`；两种架构的运动、显示器拓扑和 WinForms 运行时测试均通过。x64 运行时记录 39 次窗口位置变化，x86 记录 37 次；两者都通过拖拽、窗口跟随、窗口落脚、镜像缓存和并发释放检查。
 - Windows GUI、透明命中、托盘、DPI、多显示器和 1/10/50/100 实例性能：未执行。
 
 ## 下一条可执行任务

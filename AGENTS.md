@@ -13,9 +13,12 @@
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-environment.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-reference-assemblies.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore-upstream.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-upstream.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
 ```
 
-上游原版需要 .NET Framework 4.7.2/4.8 开发者包和 NuGet 包；缺失时脚本应报告实际缺项。当前目标代码使用本地 .NET 8 SDK，Windows API 适配必须与可测试的核心逻辑分层。
+上游原版需要 .NET Framework 4.7.2/4.8 开发者包和 NuGet 包；也可用 `bootstrap-reference-assemblies.ps1` 下载精确的 4.7.2 引用程序集到工作区。当前目标代码使用本地 .NET 8 SDK，Windows API 适配必须与可测试的核心逻辑分层。
 
 不要提交密钥、真实桌面路径、用户文件内容或未经审计的第三方素材。不要默认启用联网下载、自启动、真实快捷方式移动或管理员权限。

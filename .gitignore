@@ -1,5 +1,4 @@
-.tools/dotnet/
-.tools/dotnet-install.ps1
+.tools/
 artifacts/
 build/
 TestResults/

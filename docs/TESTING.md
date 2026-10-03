@@ -4,6 +4,13 @@
 
 上游提供 `vendor/esheep/tests/run-motion-tests.ps1`，覆盖运动插值、拖拽速度、显示器索引恢复、窗口移动、Timer/Hook 清理和交互运行时检查。它依赖 .NET Framework 4.7.2 目标包、NuGet 和可用桌面会话；当前机器的原版编译先因 MSB3644 阻塞，未宣称这些测试通过。
 
+当前工作区用以下入口恢复包、使用隔离的 `stdole` 适配构建并运行同一套测试：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x86
+```
+
 ## YimyWalk 自动测试目标
 
 M1 开始后，核心测试必须覆盖 3×3 切图/索引、非法图像、配置默认值、锚点/镜像、状态迁移、跳跃/坠落/落地、拖拽中断、delta 上限、随机源隔离、共享定义、角色刷新失败、命令参数和数量上限。测试使用假的时钟、随机源、桌面表面和输入。
