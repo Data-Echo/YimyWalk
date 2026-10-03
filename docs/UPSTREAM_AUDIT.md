@@ -25,6 +25,8 @@
 
 安装引用程序集和 NuGet 包后，原版项目继续在 `stdole` COMReference 处失败（MSB4181/MSB3283），x86/x64 一致。源码检索未发现 `stdole` 的实际使用，因此脚本提供 `-SkipUnusedStdoleComReference`，只在同目录临时项目副本中移除该引用，不修改上游快照；这属于构建环境适配验证，不代表上游原版项目文件本身已修复。
 
+使用该隔离选项后，x64 和 x86 都成功编译，并分别运行 `MotionTests`、`DisplayTopologyTests` 和 `RuntimeMotionTests`；测试输出全部为 PASS。测试运行的是现有桌面会话中的显示器 0、scale 1，未覆盖 1/10/50/100 实例性能或所有 DPI/多屏组合。
+
 ## 代码路径审计
 
 - **宠物窗口/透明交互**：`src/dotNet/FormPet.cs:20` 定义 WinForms 宠物窗口；`FormPet.cs:1094-1233` 处理按下、拖拽、抛掷和释放；`FormPet.cs:1312-1452` 集中声明 Win32 窗口 API。上游使用逐宠物窗体，透明和命中区域需要在 Windows 桌面逐项验证。

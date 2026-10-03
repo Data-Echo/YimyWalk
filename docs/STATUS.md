@@ -22,6 +22,13 @@
 - 使用隔离项目副本构建后，x64 和 x86 均生成 `DesktopPet.exe`；两种架构的运动、显示器拓扑和 WinForms 运行时测试均通过。x64 运行时记录 39 次窗口位置变化，x86 记录 37 次；两者都通过拖拽、窗口跟随、窗口落脚、镜像缓存和并发释放检查。
 - Windows GUI、透明命中、托盘、DPI、多显示器和 1/10/50/100 实例性能：未执行。
 
+本轮安装与命令证据：
+
+- 全局安装 Microsoft .NET Framework Developer Pack 4.8.1、NuGet CLI 7.9.0；工作区通过 `bootstrap-reference-assemblies.ps1` 恢复 `Microsoft.NETFramework.ReferenceAssemblies.net472` 1.0.3。
+- `scripts/run-upstream-tests.ps1 -Platform x64 -Scales 1 -Displays 0 -SkipBuild`：通过，22 项运动检查及 WinForms 运行时检查全部通过。
+- `scripts/run-upstream-tests.ps1 -Platform x86 -Scales 1 -Displays 0 -SkipBuild`：通过，22 项运动检查及 WinForms 运行时检查全部通过。
+- `origin` 为 `git@github.com:Data-Echo/YimyWalk.git`，`codex/bootstrap` 已推送并跟踪 `origin/codex/bootstrap`。
+
 ## 下一条可执行任务
 
 先由用户审阅 `docs/ARCHITECTURE.md` 和 `docs/CHARACTER_FORMAT.md` 的 M1 设计，再创建核心模拟与角色加载项目；不把上游 XML 直接当作 YimyWalk 角色格式。
