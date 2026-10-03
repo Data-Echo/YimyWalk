@@ -68,7 +68,14 @@ internal sealed class PetWindow : Form
     {
         if (m.Msg == NativeMethods.WM_NCHITTEST && _surface is not null)
         {
-            var point = PointToClient(Cursor.Position);
+            // WM_NCHITTEST supplies the screen coordinate being queried in
+            // lParam. Do not read the mutable global cursor here: Windows can
+            // probe a point while the cursor is elsewhere (for example during
+            // hit-test routing or on a negative-coordinate display).
+            var screenPoint = new Point(
+                unchecked((short)m.LParam.ToInt64()),
+                unchecked((short)(m.LParam.ToInt64() >> 16)));
+            var point = PointToClient(screenPoint);
             if (point.X < 0 || point.Y < 0 || point.X >= _surface.Bitmap.Width || point.Y >= _surface.Bitmap.Height || _surface.Alpha[point.Y * _surface.Bitmap.Width + point.X] < 12)
             {
                 m.Result = (IntPtr)NativeMethods.HTTRANSPARENT;

@@ -233,7 +233,7 @@ Mouse down on an entity calls `PetSession.BeginDrag`, captures the mouse and pau
 
 Run: `& .tools/dotnet/dotnet.exe build src/YimyWalk.App/YimyWalk.App.csproj --configuration Release -p:Platform=x64`.
 
-Run the desktop harness and verify separately: transparent region passes a click to a test window; visible pet pixels receive a click; dragging moves the pet; releasing creates a fall/toss; clicking/dragging does not activate the pet window. Record any unavailable GUI checks as unverified. Commit: `feat: add one-window-per-pet layered host`.
+Run `scripts/desktop-smoke.ps1` for real 1/10/50/100 window creation and clearing. Run `scripts/desktop-input-smoke.ps1` in an unlocked visible session to verify separately: transparent region passes a click to a test window; visible pet pixels receive a click; dragging moves the pet; releasing creates a fall/toss; clicking/dragging does not activate the pet window. The harness records the production `WM_NCHITTEST` values and reports a `LockScreenBackstopFrame`/secure-desktop interception as unverified rather than treating it as a pass. Commit: `feat: add one-window-per-pet layered host`.
 
 ## Task 6: Add tray lifecycle, manager controls and responsive batch creation
 
@@ -298,6 +298,7 @@ Record SixLabors.ImageSharp 3.1.12 and its Apache 2.0 license in `THIRD_PARTY_NO
 **Files:**
 - Modify: `docs/STATUS.md`
 - Modify: `docs/TESTING.md`
+- Use: `scripts/desktop-smoke.ps1` and `scripts/desktop-input-smoke.ps1`
 - Create: `artifacts/m1/<timestamp>/` test logs and measurements (ignored by Git)
 
 - [ ] **Step 1: Run automated verification.**
@@ -306,7 +307,7 @@ Run `scripts/build-yimywalk.ps1`, `scripts/test-yimywalk.ps1`, and the Release p
 
 - [ ] **Step 2: Run the real Windows desktop matrix.**
 
-On the available Windows desktop, record OS version, x64/x86 process architecture, DPI scale, display count/work areas, CPU model, memory, and applicable process/USER/GDI handles. Test role loading from only `sprite.png`, role switching without code changes, actual Fall → ground → Walk/Idle, Jump, drag, release toss, transparent hit-through, visible entity hit, no focus activation, tray exit, and create/clear at 1/10/50/100. Repeat create/clear and record resource trends. Do not move desktop files or enable startup/security changes.
+On the available Windows desktop, record OS version, x64/x86 process architecture, DPI scale, display count/work areas, CPU model, memory, and applicable process/USER/GDI handles. Test role loading from only `sprite.png`, role switching without code changes, actual Fall → ground → Walk/Idle, Jump, drag, release toss, transparent hit-through, visible entity hit, no focus activation, tray exit, and create/clear at 1/10/50/100. Repeat create/clear and record resource trends. `desktop-input-smoke.ps1` must print the direct `WM_NCHITTEST` values and actual `WindowFromPoint` targets; a `LockScreenBackstopFrame` or other secure-desktop interception leaves input routing unverified. Do not move desktop files or enable startup/security changes.
 
 - [ ] **Step 3: Mark each result with its evidence level.**
 
@@ -325,6 +326,6 @@ Run `git diff --check`, `git status --short`, and the complete verification comm
 - [x] Task 5：`net8.0-windows`、一个实例一个分层窗口、透明/实体命中分流和不抢焦点窗口样式；代码构建已通过，交互桌面验收未完成。
 - [x] Task 6：托盘菜单、管理器、1/10/50/100 按钮和每 UI turn 最多 8 只的批量队列；代码构建已通过，真实批量桌面验收未完成。
 - [x] Task 7：构建/运行脚本、角色生成脚本、文档和第三方通知。
-- [ ] Task 8：自动化已通过；Windows 桌面透明命中、交互、批量资源基线和趋势记录待在可见桌面会话完成。
+- [ ] Task 8：自动化、真实 1/10/50/100 批量 smoke 和运动状态检查已通过；当前会话的 `desktop-input-smoke` 被全屏 `LockScreenBackstopFrame`/安全桌面遮罩拦截，透明路由、实体点击、拖拽/抛掷、焦点、托盘退出和长期资源趋势仍保持 Windows 桌面未验证。
 
 完成判定仍按五类证据分别记录：代码已实现、构建通过、核心测试通过、Windows 桌面已验证、Windows 桌面未验证。未完成的桌面项不会因为核心测试或启动 smoke test 而自动变为已验收。
