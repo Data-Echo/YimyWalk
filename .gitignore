@@ -1,0 +1,11 @@
+.tools/dotnet/
+.tools/dotnet-install.ps1
+artifacts/
+build/
+TestResults/
+*.user
+*.suo
+*.nupkg
+*.vsix
+obj/
+bin/
