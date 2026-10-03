@@ -26,9 +26,16 @@ public sealed class CharacterFormatTests
     {
         var nonDivisible = TestSpriteFactory.WriteSprite(97, 96, fullyTransparent: false);
         var transparent = TestSpriteFactory.WriteSprite(96, 96, fullyTransparent: true);
-
-        Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(nonDivisible));
-        Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(transparent));
+        try
+        {
+            Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(nonDivisible));
+            Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(transparent));
+        }
+        finally
+        {
+            TestSpriteFactory.DeleteFixture(nonDivisible);
+            TestSpriteFactory.DeleteFixture(transparent);
+        }
     }
 
     [Fact]
@@ -36,8 +43,31 @@ public sealed class CharacterFormatTests
     {
         var corrupt = TestSpriteFactory.WriteCorruptSprite();
         var overlarge = TestSpriteFactory.WriteSprite(2049, 2049, fullyTransparent: false);
+        try
+        {
+            Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(corrupt));
+            Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(overlarge));
+        }
+        finally
+        {
+            TestSpriteFactory.DeleteFixture(corrupt);
+            TestSpriteFactory.DeleteFixture(overlarge);
+        }
+    }
 
-        Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(corrupt));
-        Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(overlarge));
+    [Fact]
+    public void RejectsOpaqueRgbPngWithoutAnAlphaChannel()
+    {
+        var directory = TestSpriteFactory.WriteOpaqueRgbSprite();
+
+        try
+        {
+            var exception = Assert.Throws<CharacterLoadException>(() => CharacterLoader.LoadDirectory(directory));
+            Assert.Equal(Path.GetFullPath(directory), exception.DirectoryPath);
+        }
+        finally
+        {
+            TestSpriteFactory.DeleteFixture(directory);
+        }
     }
 }

@@ -29,6 +29,7 @@ internal sealed class PetWindow : Form
         MouseDown += HandleMouseDown;
         MouseMove += HandleMouseMove;
         MouseUp += HandleMouseUp;
+        MouseCaptureChanged += (_, _) => ReleaseDrag();
         Deactivate += (_, _) => ReleaseDrag();
         RefreshFrame();
     }
@@ -50,12 +51,13 @@ internal sealed class PetWindow : Form
     public void RefreshFrame()
     {
         if (IsDisposed) return;
-        var frame = Instance.Definition.SelectFrame(Instance.GetFrameKind());
-        _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored);
+        var frame = Instance.Definition.SelectFrame(Instance.GetFrameKind(), Instance.AnimationTime);
+        var scale = Math.Max(0.1f, Instance.Definition.Scale);
+        _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored, scale);
         ClientSize = _surface.Bitmap.Size;
         var area = _engine.Surface.WorkingArea;
-        var x = (int)Math.Round(Instance.FootPosition.X - Instance.Definition.Anchor.X);
-        var y = (int)Math.Round(Instance.FootPosition.Y - Instance.Definition.Anchor.Y);
+        var x = (int)Math.Round(Instance.FootPosition.X - Instance.Definition.Anchor.X * scale);
+        var y = (int)Math.Round(Instance.FootPosition.Y - Instance.Definition.Anchor.Y * scale);
         var location = new Point(x, y);
         Location = location;
         if (IsHandleCreated)
@@ -95,12 +97,13 @@ internal sealed class PetWindow : Form
         var cursor = Cursor.Position;
         var now = DateTime.UtcNow;
         var delta = (float)Math.Max(0.001, (now - _lastCursorTime).TotalSeconds);
+        var scale = Math.Max(0.1f, Instance.Definition.Scale);
         var toss = new Vector2((cursor.X - _lastCursor.X) / delta, (cursor.Y - _lastCursor.Y) / delta);
         _lastCursor = cursor;
         _lastCursorTime = now;
         _engine.SetDraggedFootPosition(Instance, new Vector2(
-            cursor.X - _grabOffset.X + Instance.Definition.Anchor.X,
-            cursor.Y - _grabOffset.Y + Instance.Definition.Anchor.Y));
+            cursor.X - _grabOffset.X + Instance.Definition.Anchor.X * (float)scale,
+            cursor.Y - _grabOffset.Y + Instance.Definition.Anchor.Y * (float)scale));
         _dragVelocity = toss;
     }
 

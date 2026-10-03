@@ -1,4 +1,4 @@
-﻿# 测试与验收入口
+# 测试与验收入口
 
 ## 自动验证
 
@@ -9,7 +9,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-yimywalk.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-yimywalk.ps1
 ```
 
-`build-yimywalk.ps1` 会 restore、运行整个解决方案的核心测试，并发布 x64 `net8.0-windows` 应用，同时把 `Characters/` 复制到发布目录。`test-yimywalk.ps1` 只运行 Release 核心测试，适合快速回归。
+`build-yimywalk.ps1` 会 restore、运行整个解决方案的核心测试，并发布 x64 `net8.0-windows` 应用，同时把 `Characters/` 复制到发布目录。`test-yimywalk.ps1` 只运行 Release 核心测试，适合快速回归。\n\n在可见 Windows 桌面会话中，powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1 会使用临时 	ools/DesktopSmoke 宿主真实创建并清空 1、10、50、100 个窗口，并输出工作集和句柄基线。它不验证透明点击、拖拽或焦点行为，这些仍需手工输入矩阵。
 
 当前核心测试覆盖：3×3 切帧和 0—8 协议、左向镜像、默认脚底锚点、sprite-only 默认值、坏 PNG/透明图/越界图、受限 delta、坠落和落地、行走边界、跳跃 apex、拖拽和抛掷、实例状态隔离、1/10/50/100 创建与清空、失败刷新保留旧定义、共享资源引用计数和幂等释放。
 

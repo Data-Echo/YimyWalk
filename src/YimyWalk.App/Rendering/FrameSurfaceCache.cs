@@ -9,9 +9,9 @@ internal sealed class FrameSurfaceCache : IDisposable
 {
     private readonly Dictionary<SurfaceKey, RenderedSurface> _surfaces = new();
 
-    public RenderedSurface Get(CharacterDefinition definition, CharacterFrame frame, bool mirrored, int scale = 1)
+    public RenderedSurface Get(CharacterDefinition definition, CharacterFrame frame, bool mirrored, float scale = 1)
     {
-        var key = new SurfaceKey(definition, frame.Index, mirrored, Math.Max(1, scale));
+        var key = new SurfaceKey(definition, frame.Index, mirrored, Math.Max(0.1f, scale));
         if (_surfaces.TryGetValue(key, out var existing)) return existing;
         var created = RenderedSurface.Create(definition, frame, mirrored, key.Scale);
         _surfaces.Add(key, created);
@@ -24,7 +24,7 @@ internal sealed class FrameSurfaceCache : IDisposable
         _surfaces.Clear();
     }
 
-    private readonly record struct SurfaceKey(CharacterDefinition Definition, int FrameIndex, bool Mirrored, int Scale);
+    private readonly record struct SurfaceKey(CharacterDefinition Definition, int FrameIndex, bool Mirrored, float Scale);
 }
 
 internal sealed class RenderedSurface : IDisposable
@@ -42,9 +42,9 @@ internal sealed class RenderedSurface : IDisposable
     private DefinitionLease Owner { get; }
     public DefinitionLease.LeaseHandle Lease { get; }
 
-    public static RenderedSurface Create(CharacterDefinition definition, CharacterFrame frame, bool mirrored, int scale)
+    public static RenderedSurface Create(CharacterDefinition definition, CharacterFrame frame, bool mirrored, float scale)
     {
-        var bitmap = new Bitmap(frame.Width * scale, frame.Height * scale, PixelFormat.Format32bppPArgb);
+        var bitmap = new Bitmap(Math.Max(1, (int)Math.Round(frame.Width * scale)), Math.Max(1, (int)Math.Round(frame.Height * scale)), PixelFormat.Format32bppPArgb);
         var alpha = new byte[bitmap.Width * bitmap.Height];
         var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
         try
@@ -54,8 +54,9 @@ internal sealed class RenderedSurface : IDisposable
             for (var y = 0; y < bitmap.Height; y++)
             for (var x = 0; x < bitmap.Width; x++)
             {
-                var sourceX = mirrored ? frame.Width - 1 - (x / scale) : x / scale;
-                var sourceY = y / scale;
+                var sourceCellX = Math.Min(frame.Width - 1, (int)Math.Floor(x / scale));
+                var sourceX = mirrored ? frame.Width - 1 - sourceCellX : sourceCellX;
+                var sourceY = Math.Min(frame.Height - 1, (int)Math.Floor(y / scale));
                 var source = (sourceY * frame.Width + sourceX) * 4;
                 var a = pixels[source + 3];
                 var destination = y * stride + x * 4;

@@ -6,6 +6,37 @@ namespace YimyWalk.Core.Tests;
 public sealed class ResourceLifecycleTests
 {
     [Fact]
+    public void SeparateCatalogSessionAndRendererOwnersShareTheSameLifetime()
+    {
+        var definition = TestSpriteFactory.LoadSpriteOnly("owners");
+        var catalog = new DefinitionLease(definition);
+        var session = new DefinitionLease(definition);
+        var renderer = new DefinitionLease(definition);
+        var instance = session.AcquireInstance();
+        var paint = renderer.AcquireRenderer();
+        catalog.Dispose();
+        session.Dispose();
+        Assert.False(definition.IsDisposed);
+        instance.Dispose();
+        renderer.Dispose();
+        Assert.False(definition.IsDisposed);
+        paint.Dispose();
+        Assert.True(definition.IsDisposed);
+        Assert.Empty(definition.Frames);
+    }
+
+    [Fact]
+    public void ReplacingUnreferencedCatalogVersionsReleasesThem()
+    {
+        var directory = TestSpriteFactory.WriteSprite(96, 96, false);
+        using var catalog = new CharacterCatalog();
+        var root = Path.GetDirectoryName(directory)!;
+        var first = catalog.Scan(root).Values.Single();
+        var next = catalog.Scan(root).Values.Single();
+        Assert.True(first.IsDisposed);
+        Assert.False(next.IsDisposed);
+    }
+    [Fact]
     public void DefinitionWaitsForInstanceAndRendererReferencesBeforeDisposal()
     {
         var definition = TestSpriteFactory.LoadSpriteOnly("leased");

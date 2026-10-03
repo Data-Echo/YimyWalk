@@ -61,7 +61,11 @@ internal sealed class AppHost : ApplicationContext
         _session.CreateMany(_catalog.TryGet(id, out var definition) ? definition : throw new KeyNotFoundException(id), count);
     }
 
-    public void ClearPets() => _session.Clear();
+    public void ClearPets()
+    {
+        _batch.Cancel();
+        _session.Clear();
+    }
 
     public void QueueCreate(string id, int count)
     {
@@ -117,6 +121,7 @@ internal sealed class AppHost : ApplicationContext
             _tray.Dispose();
             _manager.Dispose();
             _session.Dispose();
+            _catalog.Dispose();
             _windows.Dispose();
             _surfaceCache.Dispose();
             MainForm?.Dispose();

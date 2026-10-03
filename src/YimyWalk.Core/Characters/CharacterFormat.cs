@@ -31,6 +31,8 @@ public sealed record CharacterDefaults(
     float IdleSecondsMax,
     float SpeechCooldownSeconds);
 
+public sealed record CharacterAnimation(float IdleFps, float WalkFps);
+
 public sealed class CharacterLoadException : Exception
 {
     public CharacterLoadException(string directory, string reason, Exception? innerException = null)

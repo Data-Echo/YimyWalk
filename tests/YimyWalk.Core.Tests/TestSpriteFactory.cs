@@ -9,7 +9,14 @@ internal static class TestSpriteFactory
     public static CharacterDefinition LoadSpriteOnly(string id)
     {
         var directory = WriteSprite(96, 96, fullyTransparent: false, id);
-        return CharacterLoader.LoadDirectory(directory);
+        try
+        {
+            return CharacterLoader.LoadDirectory(directory);
+        }
+        finally
+        {
+            DeleteFixture(directory);
+        }
     }
 
     public static string WriteSprite(int width, int height, bool fullyTransparent, string? id = null)
@@ -34,5 +41,25 @@ internal static class TestSpriteFactory
         Directory.CreateDirectory(directory);
         File.WriteAllBytes(Path.Combine(directory, "sprite.png"), new byte[] { 1, 2, 3, 4, 5 });
         return directory;
+    }
+
+    public static string WriteOpaqueRgbSprite(int width = 96, int height = 96)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "YimyWalkTests", Guid.NewGuid().ToString("N"), "opaque");
+        Directory.CreateDirectory(directory);
+        using var image = new Image<Rgb24>(width, height, new Rgb24(40, 180, 80));
+        image.SaveAsPng(Path.Combine(directory, "sprite.png"));
+        return directory;
+    }
+
+    public static void DeleteFixture(string directory)
+    {
+        var parent = Directory.GetParent(directory);
+        if (parent is not null && Guid.TryParseExact(parent.Name, "N", out _) && Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+            if (!Directory.EnumerateFileSystemEntries(parent.FullName).Any())
+                Directory.Delete(parent.FullName, recursive: false);
+        }
     }
 }

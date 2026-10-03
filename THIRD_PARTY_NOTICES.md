@@ -16,5 +16,5 @@ The upstream README credits NAudio and several sprite authors. We keep the snaps
 
 - Package: `SixLabors.ImageSharp` 3.1.12
 - Source: <https://github.com/SixLabors/ImageSharp>
-- License: Apache License 2.0
+- License: Six Labors Split License 1.0 (Apache 2.0 for qualifying open-source/source-available, qualifying lower-revenue or nonprofit use; other direct commercial use may require the Six Labors commercial license).
 - Use in YimyWalk: decode `sprite.png` into platform-neutral RGBA frame buffers in `YimyWalk.Core`.

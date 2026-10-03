@@ -35,17 +35,28 @@ internal sealed class ManagerForm : Form
         layout.Controls.Add(_count);
         layout.Controls.Add(_status);
         Controls.Add(layout);
+        _host.Session.InstanceAdded += OnSessionChanged;
+        _host.Session.InstanceRemoved += OnSessionChanged;
+        _host.Batch.Changed += OnBatchChanged;
         Shown += (_, _) => RefreshCharacters();
-        FormClosed += (_, _) => { if (!_host.IsExiting) Hide(); };
+        FormClosed += (_, _) =>
+        {
+            _host.Session.InstanceAdded -= OnSessionChanged;
+            _host.Session.InstanceRemoved -= OnSessionChanged;
+            _host.Batch.Changed -= OnBatchChanged;
+            if (!_host.IsExiting) Hide();
+        };
     }
 
     public void RefreshCharacters()
     {
-        var selected = _characters.SelectedItem as string;
+        var selected = _characters.SelectedItem as RoleChoice;
         _characters.Items.Clear();
-        foreach (var id in _host.Catalog.Definitions.Keys)
-            _characters.Items.Add(id);
-        if (selected is not null && _characters.Items.Contains(selected)) _characters.SelectedItem = selected;
+        foreach (var definition in _host.Catalog.Definitions.Values)
+            _characters.Items.Add(new RoleChoice(definition.Id, definition.DisplayName));
+        if (selected is not null)
+            for (var i = 0; i < _characters.Items.Count; i++)
+                if (_characters.Items[i] is RoleChoice choice && choice.Id.Equals(selected.Id, StringComparison.OrdinalIgnoreCase)) _characters.SelectedIndex = i;
         if (_characters.SelectedIndex < 0 && _characters.Items.Count > 0) _characters.SelectedIndex = 0;
         UpdateCount();
     }
@@ -58,7 +69,17 @@ internal sealed class ManagerForm : Form
 
     private void CreateMany(int count)
     {
-        if (_characters.SelectedItem is string id) _host.QueueCreate(id, count);
+        if (_characters.SelectedItem is RoleChoice role) _host.QueueCreate(role.Id, count);
         UpdateCount();
+    }
+
+    private void OnSessionChanged(YimyWalk.Core.Simulation.PetInstance _)
+        => UpdateCount();
+
+    private void OnBatchChanged() => UpdateCount();
+
+    private sealed record RoleChoice(string Id, string DisplayName)
+    {
+        public override string ToString() => $"{Id} — {DisplayName}";
     }
 }

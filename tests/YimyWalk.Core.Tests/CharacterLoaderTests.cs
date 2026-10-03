@@ -22,6 +22,8 @@ public sealed class CharacterLoaderTests
     public void ReadsOptionalConfigWithoutChangingFrameProtocol()
     {
         var directory = TestSpriteFactory.WriteSprite(96, 96, fullyTransparent: false);
+        try
+        {
         File.WriteAllText(Path.Combine(directory, "character.json"), """
         {
           "schemaVersion": 1,
@@ -38,5 +40,11 @@ public sealed class CharacterLoaderTests
         Assert.Equal(1.5f, definition.Scale);
         Assert.Equal(80f, definition.Movement.WalkSpeed);
         Assert.Equal(9, definition.Frames.Count);
+        Assert.Equal(new CharacterAnimation(3f, 8f), definition.Animation);
+        }
+        finally
+        {
+            TestSpriteFactory.DeleteFixture(directory);
+        }
     }
 }

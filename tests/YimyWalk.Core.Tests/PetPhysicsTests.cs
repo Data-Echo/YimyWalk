@@ -68,9 +68,25 @@ public sealed class PetPhysicsTests
         Assert.Equal(Vector2.Zero, pet.Velocity);
 
         engine.ReleaseDrag(pet, new Vector2(5000, -5000));
-        Assert.Equal(PetState.Fall, pet.State);
+        Assert.Equal(PetState.Jump, pet.State);
         Assert.True(Math.Abs(pet.Velocity.X) <= PetEngine.MaxTossSpeed);
         Assert.True(Math.Abs(pet.Velocity.Y) <= PetEngine.MaxTossSpeed);
+    }
+
+    [Fact]
+    public void UpwardTossUsesJumpAndApexFramesBeforeFalling()
+    {
+        var pet = NewPet(new Vector2(300, Area.Bottom));
+        var engine = NewEngine();
+        engine.BeginDrag(pet);
+        engine.SetDraggedFootPosition(pet, new Vector2(300, 500));
+        engine.ReleaseDrag(pet, new Vector2(0, -400));
+
+        Assert.Equal(PetState.Jump, pet.State);
+        Assert.Equal(FrameKind.Jump, pet.GetFrameKind());
+        for (var i = 0; i < 20 && pet.State != PetState.Apex; i++) engine.Tick(pet, 0.05);
+        Assert.Equal(PetState.Apex, pet.State);
+        Assert.Equal(FrameKind.Apex, pet.GetFrameKind());
     }
 
     [Fact]
@@ -92,6 +108,16 @@ public sealed class PetPhysicsTests
         Assert.Equal(Area.Bottom, first.FootPosition.Y);
     }
 
+    [Fact]
+    public void IdleEventuallyLeavesByConfiguredMaximum()
+    {
+        var pet = NewPet(new Vector2(100, Area.Bottom));
+        var engine = new PetEngine(new TestSurface(Area), new LowRandom());
+        for (var i = 0; i < 90 && pet.State == PetState.Fall; i++) engine.Tick(pet, 0.1);
+        for (var i = 0; i < 90 && pet.State == PetState.Idle; i++) engine.Tick(pet, 0.1);
+        Assert.Equal(PetState.Walk, pet.State);
+    }
+
     private static PetInstance NewPet(Vector2 foot)
         => new(TestSpriteFactory.LoadSpriteOnly("pet"), foot);
 
@@ -107,6 +133,12 @@ public sealed class PetPhysicsTests
     private sealed class FixedRandom : IRandomSource
     {
         public double NextDouble() => 0.5;
+        public int Next(int minInclusive, int maxExclusive) => minInclusive;
+    }
+
+    private sealed class LowRandom : IRandomSource
+    {
+        public double NextDouble() => 0;
         public int Next(int minInclusive, int maxExclusive) => minInclusive;
     }
 }

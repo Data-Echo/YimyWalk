@@ -66,14 +66,12 @@ public sealed class PetEngine
                 break;
             case PetState.Idle:
                 pet.Velocity = Vector2.Zero;
-                if (pet.StateTime >= pet.Definition.Defaults.IdleSecondsMin)
+                if (pet.StateTime >= pet.Definition.Defaults.IdleSecondsMax
+                    || (pet.StateTime >= pet.Definition.Defaults.IdleSecondsMin && _random.NextDouble() >= 0.25))
                 {
                     // The random choice is deliberately infrequent and deterministic
                     // under a test source; the third row is never an animation loop.
-                    if (_random.NextDouble() >= 0.25)
-                        pet.StartWalking(_random.Next(0, 2) == 0 ? FacingDirection.Left : FacingDirection.Right);
-                    else
-                        pet.StateTime = 0;
+                    pet.StartWalking(_random.Next(0, 2) == 0 ? FacingDirection.Left : FacingDirection.Right);
                 }
                 break;
         }
@@ -101,7 +99,7 @@ public sealed class PetEngine
         pet.Velocity = new Vector2(
             Math.Clamp(tossVelocity.X, -MaxTossSpeed, MaxTossSpeed),
             Math.Clamp(tossVelocity.Y, -MaxTossSpeed, MaxTossSpeed));
-        pet.State = PetState.Fall;
+        pet.State = pet.Velocity.Y < -25f ? PetState.Jump : PetState.Fall;
         pet.StateTime = 0;
     }
 

@@ -5,8 +5,7 @@ namespace YimyWalk.App.Host;
 internal sealed class BatchCreationQueue : IDisposable
 {
     private readonly System.Windows.Forms.Timer _timer;
-    private readonly Queue<Func<PetInstance>> _requests = new();
-    private int _pending;
+    private readonly BatchRequestQueue<PetInstance> _work = new();
     private bool _disposed;
 
     public BatchCreationQueue(Func<PetInstance> createOne)
@@ -16,7 +15,7 @@ internal sealed class BatchCreationQueue : IDisposable
         _timer.Tick += DrainBatch;
     }
 
-    public int PendingCount => _pending;
+    public int PendingCount => _work.PendingCount;
     public int ActiveCount { get; private set; }
     public Func<PetInstance> CreateOne { get; set; }
     public event Action? Changed;
@@ -28,16 +27,14 @@ internal sealed class BatchCreationQueue : IDisposable
     {
         if (_disposed || count <= 0) return;
         ArgumentNullException.ThrowIfNull(factory);
-        for (var i = 0; i < count; i++) _requests.Enqueue(factory);
-        _pending = checked(_pending + count);
+        _work.Enqueue(factory, count);
         _timer.Start();
         Changed?.Invoke();
     }
 
     public void Cancel()
     {
-        _pending = 0;
-        _requests.Clear();
+        _work.Cancel();
         _timer.Stop();
         Changed?.Invoke();
     }
@@ -50,20 +47,17 @@ internal sealed class BatchCreationQueue : IDisposable
 
     private void DrainBatch(object? sender, EventArgs e)
     {
-        if (_pending <= 0)
+        if (_work.PendingCount <= 0)
         {
             _timer.Stop();
             return;
         }
 
-        var batch = Math.Min(8, _pending);
-        for (var i = 0; i < batch; i++)
+        _work.Drain(8, _ =>
         {
-            (_requests.Dequeue())();
             ActiveCount++;
-            _pending--;
-        }
-        if (_pending <= 0) _timer.Stop();
+        });
+        if (_work.PendingCount <= 0) _timer.Stop();
         Changed?.Invoke();
     }
 

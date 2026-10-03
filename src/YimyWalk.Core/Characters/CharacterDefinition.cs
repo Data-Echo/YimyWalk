@@ -14,23 +14,23 @@ public sealed class CharacterDefinition : IDisposable
     public required int CellHeight { get; init; }
     public required float Scale { get; init; }
     public required Anchor Anchor { get; init; }
-    public required IReadOnlyList<CharacterFrame> Frames { get; init; }
+    private IReadOnlyList<CharacterFrame> _frames = Array.Empty<CharacterFrame>();
+    public required IReadOnlyList<CharacterFrame> Frames { get => _frames; init => _frames = Array.AsReadOnly(value.ToArray()); }
     public required CharacterMovement Movement { get; init; }
     public required CharacterDefaults Defaults { get; init; }
     public required DialogueSet Dialogue { get; init; }
+    public CharacterAnimation Animation { get; init; } = new(3, 8);
     public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
 
-    public CharacterFrame SelectFrame(FrameKind kind)
+    public CharacterFrame SelectFrame(FrameKind kind, float animationSeconds = 0)
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
 
-        if (kind == FrameKind.WalkLeft)
-        {
-            var right = Frames.First(frame => frame.Kind == FrameKind.WalkRight);
-            return right with { Kind = FrameKind.WalkLeft, Mirrored = true };
-        }
-
-        return Frames.First(frame => frame.Kind == kind);
+        var walking = kind is FrameKind.WalkRight or FrameKind.WalkLeft;
+        var offset = kind == FrameKind.Idle || walking
+            ? (int)(Math.Max(0, animationSeconds) * (walking ? Animation.WalkFps : Animation.IdleFps) % 3) : 0;
+        var index = kind switch { FrameKind.Idle => offset, FrameKind.WalkRight or FrameKind.WalkLeft => 3 + offset, FrameKind.Jump => 6, FrameKind.Apex => 7, _ => 8 };
+        return kind == FrameKind.WalkLeft ? Frames[index] with { Kind = kind, Mirrored = true } : Frames[index];
     }
 
     /// <summary>
@@ -40,5 +40,6 @@ public sealed class CharacterDefinition : IDisposable
     public void Dispose()
     {
         Interlocked.Exchange(ref _disposed, 1);
+        _frames = Array.Empty<CharacterFrame>();
     }
 }
