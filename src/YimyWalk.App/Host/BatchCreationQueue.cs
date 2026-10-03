@@ -5,6 +5,7 @@ namespace YimyWalk.App.Host;
 internal sealed class BatchCreationQueue : IDisposable
 {
     private readonly System.Windows.Forms.Timer _timer;
+    private readonly Queue<Func<PetInstance>> _requests = new();
     private int _pending;
     private bool _disposed;
 
@@ -21,8 +22,13 @@ internal sealed class BatchCreationQueue : IDisposable
     public event Action? Changed;
 
     public void Enqueue(int count)
+        => Enqueue(CreateOne, count);
+
+    public void Enqueue(Func<PetInstance> factory, int count)
     {
         if (_disposed || count <= 0) return;
+        ArgumentNullException.ThrowIfNull(factory);
+        for (var i = 0; i < count; i++) _requests.Enqueue(factory);
         _pending = checked(_pending + count);
         _timer.Start();
         Changed?.Invoke();
@@ -31,6 +37,7 @@ internal sealed class BatchCreationQueue : IDisposable
     public void Cancel()
     {
         _pending = 0;
+        _requests.Clear();
         _timer.Stop();
         Changed?.Invoke();
     }
@@ -52,7 +59,7 @@ internal sealed class BatchCreationQueue : IDisposable
         var batch = Math.Min(8, _pending);
         for (var i = 0; i < batch; i++)
         {
-            CreateOne();
+            (_requests.Dequeue())();
             ActiveCount++;
             _pending--;
         }

@@ -66,8 +66,7 @@ internal sealed class AppHost : ApplicationContext
     public void QueueCreate(string id, int count)
     {
         if (!_catalog.TryGet(id, out var definition)) return;
-        _batch.Enqueue(count);
-        _batch.CreateOne = () => _session.Create(definition.Id);
+        _batch.Enqueue(() => _session.Create(definition.Id), count);
     }
 
     public void ShowManager()

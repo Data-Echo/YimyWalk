@@ -13,6 +13,7 @@ internal sealed class PetWindow : Form
     private Point _lastCursor;
     private DateTime _lastCursorTime;
     private Vector2 _dragVelocity;
+    private Point _grabOffset;
 
     public PetWindow(PetInstance instance, PetSession session, FrameSurfaceCache cache)
     {
@@ -25,7 +26,6 @@ internal sealed class PetWindow : Form
         TopMost = true;
         DoubleBuffered = false;
         BackColor = Color.Magenta;
-        TransparencyKey = Color.Magenta;
         MouseDown += HandleMouseDown;
         MouseMove += HandleMouseMove;
         MouseUp += HandleMouseUp;
@@ -83,6 +83,7 @@ internal sealed class PetWindow : Form
         if (e.Button != MouseButtons.Left) return;
         _dragging = true;
         Capture = true;
+        _grabOffset = new Point(e.X, e.Y);
         _lastCursor = Cursor.Position;
         _lastCursorTime = DateTime.UtcNow;
         _engine.BeginDrag(Instance);
@@ -97,7 +98,9 @@ internal sealed class PetWindow : Form
         var toss = new Vector2((cursor.X - _lastCursor.X) / delta, (cursor.Y - _lastCursor.Y) / delta);
         _lastCursor = cursor;
         _lastCursorTime = now;
-        _engine.SetDraggedFootPosition(Instance, new Vector2(cursor.X + Instance.Definition.Anchor.X, cursor.Y + Instance.Definition.Anchor.Y));
+        _engine.SetDraggedFootPosition(Instance, new Vector2(
+            cursor.X - _grabOffset.X + Instance.Definition.Anchor.X,
+            cursor.Y - _grabOffset.Y + Instance.Definition.Anchor.Y));
         _dragVelocity = toss;
     }
 
