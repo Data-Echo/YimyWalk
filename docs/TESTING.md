@@ -1,22 +1,40 @@
-# 测试与验收入口
+﻿# 测试与验收入口
 
-## 已有基线
+## 自动验证
 
-上游提供 `vendor/esheep/tests/run-motion-tests.ps1`，覆盖运动插值、拖拽速度、显示器索引恢复、窗口移动、Timer/Hook 清理和交互运行时检查。它依赖 .NET Framework 4.7.2 目标包、NuGet 和可用桌面会话；当前机器的原版编译先因 MSB3644 阻塞，未宣称这些测试通过。
+工作区使用 `.tools/dotnet/dotnet.exe`，不会依赖系统 PATH 中的 SDK。完整自动验证：
 
-当前工作区用以下入口恢复包、使用隔离的 `stdole` 适配构建并运行同一套测试：
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-yimywalk.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-yimywalk.ps1
+```
+
+`build-yimywalk.ps1` 会 restore、运行整个解决方案的核心测试，并发布 x64 `net8.0-windows` 应用，同时把 `Characters/` 复制到发布目录。`test-yimywalk.ps1` 只运行 Release 核心测试，适合快速回归。
+
+当前核心测试覆盖：3×3 切帧和 0—8 协议、左向镜像、默认脚底锚点、sprite-only 默认值、坏 PNG/透明图/越界图、受限 delta、坠落和落地、行走边界、跳跃 apex、拖拽和抛掷、实例状态隔离、1/10/50/100 创建与清空、失败刷新保留旧定义、共享资源引用计数和幂等释放。
+
+## Windows 桌面验收矩阵
+
+桌面验收必须在可见 Windows 桌面会话中进行，不能用普通窗口动画或纯逻辑模拟代替。每次记录 OS、进程架构、DPI、显示器工作区、CPU、内存以及进程的适用 USER/GDI/句柄指标。
+
+| 项目 | 证据要求 |
+| --- | --- |
+| 角色加载 | 只放 `sprite.png` 的 cat/slime 都能启动，换目录不改代码 |
+| 运动 | 屏幕上方掉落、落地、Idle/Walk、Jump、Fall 都在真实桌面可见 |
+| 交互 | 透明区域穿透、实体命中、拖拽、释放抛掷分别验证 |
+| 焦点 | 点击、拖拽和刷新不激活宠物窗口 |
+| 生命周期 | 托盘隐藏/恢复、清空、退出后窗口、计时器、托盘和绘制资源都释放 |
+| 批量 | 1、10、50、100 真实创建与一键清空，重复运行观察 CPU、内存和句柄趋势 |
+
+100 只是基线档位，不是永久产品上限，也不能在没有测量时承诺流畅。桌面项目若未执行，必须标记为“Windows 桌面未验证”。
+
+## 上游基线
+
+原版 eSheep 测试仍使用：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x86
 ```
 
-## YimyWalk 自动测试目标
-
-M1 开始后，核心测试必须覆盖 3×3 切图/索引、非法图像、配置默认值、锚点/镜像、状态迁移、跳跃/坠落/落地、拖拽中断、delta 上限、随机源隔离、共享定义、角色刷新失败、命令参数和数量上限。测试使用假的时钟、随机源、桌面表面和输入。
-
-## Windows 手工验收
-
-在 Windows 11 x64 桌面会话中记录 OS、架构、DPI、显示器数量、构建配置和实际实例数。逐项测试透明区域点击穿透、实体拖拽/抛掷、不抢焦点、托盘恢复、负坐标副屏、跨屏拖动、任务栏变化、窗口移动/关闭、休眠恢复、全屏/勿扰、批量清空和退出后无遗留活动。截图只作为画面证据，不能替代输入和资源稳定性验证。
-
-性能档位为 1、10、50、100 只；报告 CPU 口径、内存、句柄、生成/清空释放趋势和测试时长。没有执行的档位标记“未执行”。
+这些测试属于 M0 上游证据，不会替代 YimyWalk 的桌面验收。

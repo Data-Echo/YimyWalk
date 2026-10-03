@@ -1,4 +1,4 @@
-# YimyWalk 架构决策（M0）
+# YimyWalk 架构决策（M0/M1）
 
 ## 当前决策
 
@@ -8,6 +8,8 @@
 4. 基础角色包只要求 `sprite.png`，固定 3×3 格和一致锚点；`character.json`、`dialogue.txt`、`actions.png` 都是可选扩展。
 5. M1 只交付屏幕工作区地面和基础拖拽/抛掷；窗口顶部落脚、多显示器 DPI 和外部应用事件在有真实适配层后验收。
 6. 默认所有“偷吃图标”都是虚拟分身动画。真实快捷方式暂存属于隔离的后续阶段，不能进入基础路径。
+7. M1 采用“一个宠物实例对应一个透明分层窗口”。所有窗口由同一个 `YimyWalk.App` 宿主进程管理；没有为每只宠物启动进程，也没有预先改成全屏覆盖层。
+8. `CharacterLoader` 只负责 PNG 解码、校验、RGBA 帧和帧元数据；`YimyWalk.Core` 不创建窗口、不调用 Win32、不持有 `Bitmap`。`FrameSurfaceCache` 和 `LayeredWindowRenderer` 在 App 层把共享 RGBA 转成平台绘制资源。
 
 ## 逻辑边界
 
@@ -19,6 +21,8 @@ PetEngine --------> PetInstance[] ----> PetRenderer
 InteractionSystem ----+                     +--> DesktopIntegration
 AppHost/Settings ----------------------------+       (Windows only)
 ```
+
+实例、角色定义和绘制资源的边界如下：同一角色的实例共享不可变 `CharacterDefinition` 和 RGBA 帧；位置、速度、状态、动画计时和拖拽数据只属于 `PetInstance`。定义替换通过 `DefinitionLease` 保持实例引用和在途渲染引用，最后一个引用释放后才释放旧资源。透明背景命中测试和实体命中测试分别在 `PetWindow.WndProc` 中处理，焦点控制使用 `WS_EX_NOACTIVATE` 和 `SWP_NOACTIVATE`；这些行为仍需 Windows 桌面矩阵逐项验证。
 
 时钟、随机源、工作区表面和输入由接口注入；测试使用假的实现，Windows 适配层只负责窗口、显示器、托盘和系统事件。所有推进使用单调时间，`delta` 限制在安全上限，渲染频率不决定物理结果。
 

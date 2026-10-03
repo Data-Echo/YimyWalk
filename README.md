@@ -1,49 +1,12 @@
-# YimyWalk
+﻿# YimyWalk
 
-YimyWalk 是面向 Windows 11 x64 的本地桌面 2D 宠物引擎。角色以数据包形式加载：一个角色目录至少包含一张带 Alpha 的 `sprite.png`，按 3×3 格切分为发呆、行走、起跳/滞空/下落帧。
+YimyWalk 是一个离线运行的 Windows 11 x64 桌面 2D 宠物引擎。M1 使用数据驱动的 3×3 PNG 角色包：`Characters/<id>/sprite.png` 即可加载角色，不需要修改代码。
 
-当前仓库处于 M0 基线阶段。完整需求见 [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md)，真实进度见 [`docs/STATUS.md`](docs/STATUS.md)。上游 eSheep 快照位于 [`vendor/esheep`](vendor/esheep)，审计结论见 [`docs/UPSTREAM_AUDIT.md`](docs/UPSTREAM_AUDIT.md)。
-
-## 开发环境
-
-Windows 11 x64、PowerShell、Git、Visual Studio Desktop MSBuild，以及工作区内 .NET 8 SDK。检查环境：
+当前 M1 已实现角色加载、Idle/Walk/Jump/Fall、屏幕工作区地面、拖拽/抛掷、一个实例一个透明分层窗口、同一宿主进程的托盘生命周期，以及 1/10/50/100 分批创建和清空入口。窗口顶部落脚、饥饿、气泡、外部应用事件和真实快捷方式操作留到后续阶段。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-environment.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-yimywalk.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-yimywalk.ps1
 ```
 
-若工作区 SDK 尚未安装：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-dotnet.ps1
-```
-
-上游基线若缺少 4.7.2 开发者包，可恢复精确引用程序集到工作区：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-reference-assemblies.ps1
-```
-
-## 上游基线
-
-上游构建入口和限制：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-upstream.ps1
-```
-
-当前 Build Tools 未注册上游未使用的 `stdole` COM 类型库时，可显式运行隔离验证：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-upstream.ps1 -SkipUnusedStdoleComReference
-```
-
-恢复上游 NuGet 包并运行运动、显示器和 WinForms 运行时测试：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
-```
-
-该命令不会修改系统或用户桌面。当前机器缺少 .NET Framework 4.7.2 引用程序集，因此原版构建会报告 MSB3644；安装开发者包后可重跑并把结果记录到 `docs/STATUS.md`。
-
-角色添加、构建、测试和 Windows 手工验收约定将在 M1 实现后补充到 [`docs/CHARACTER_FORMAT.md`](docs/CHARACTER_FORMAT.md) 与 [`docs/TESTING.md`](docs/TESTING.md)。
+核心测试和发布构建可在当前工作区运行；真实透明命中、拖拽、焦点、托盘和批量桌面性能矩阵见 [`docs/TESTING.md`](docs/TESTING.md)，当前状态见 [`docs/STATUS.md`](docs/STATUS.md)。

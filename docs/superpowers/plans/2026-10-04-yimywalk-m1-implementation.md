@@ -315,3 +315,16 @@ Use only these labels: `代码已实现`, `构建通过`, `核心测试通过`, 
 - [ ] **Step 4: Commit the verified milestone and push the feature branch.**
 
 Run `git diff --check`, `git status --short`, and the complete verification commands again. Commit: `feat: deliver YimyWalk M1 desktop baseline`; push `codex/bootstrap` to `origin`. If any desktop check remains unverified, keep that explicit in the commit status and do not call the full M1 acceptance complete.
+
+## 执行状态（2026-10-04）
+
+- [x] Task 1：Core solution、Release test harness 和脚本。
+- [x] Task 2：3×3 角色协议、PNG 解码、默认配置、目录索引。
+- [x] Task 3：Core 物理、状态机、delta 上限、拖拽/抛掷和帧选择。
+- [x] Task 4：共享定义、实例会话、引用计数、清空路径和两套 sprite-only 角色。
+- [x] Task 5：`net8.0-windows`、一个实例一个分层窗口、透明/实体命中分流和不抢焦点窗口样式；代码构建已通过，交互桌面验收未完成。
+- [x] Task 6：托盘菜单、管理器、1/10/50/100 按钮和每 UI turn 最多 8 只的批量队列；代码构建已通过，真实批量桌面验收未完成。
+- [x] Task 7：构建/运行脚本、角色生成脚本、文档和第三方通知。
+- [ ] Task 8：自动化已通过；Windows 桌面透明命中、交互、批量资源基线和趋势记录待在可见桌面会话完成。
+
+完成判定仍按五类证据分别记录：代码已实现、构建通过、核心测试通过、Windows 桌面已验证、Windows 桌面未验证。未完成的桌面项不会因为核心测试或启动 smoke test 而自动变为已验收。

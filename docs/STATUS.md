@@ -1,34 +1,53 @@
-# YimyWalk 状态交接
+﻿# YimyWalk 状态交接
 
 更新时间：2026-10-04
+当前分支：`codex/bootstrap`
+当前目标：M1 桌面基线，范围保持为 3×3 角色、Idle/Walk/Jump/Fall、工作区地面、拖拽/抛掷、透明宠物显示、托盘生命周期、多实例创建与清空。
 
-## 当前里程碑：M0 可信基线（已完成，含上游构建阻塞）
+## M0 上游决策证据
 
-已完成：
+- 上游仓库：`https://github.com/Adrianotiger/desktopPet`
+- 固定提交：`e2933305157a34818f47d238c74607593d81816d`
+- 快照路径：`vendor/esheep/`
+- 原版 `DesktopPet_Portable.csproj` 在未适配环境时先因缺少 .NET Framework 4.7.2 引用程序集失败；补齐工作区引用后，原版仍因未使用的 `stdole` COMReference 报 MSB4181/MSB3283。隔离构建脚本只在临时副本移除这条未使用引用，x64/x86 构建和已有运动、显示器、WinForms runtime 检查通过。
+- 复用依据：参考 `src/dotNet/FormPet.cs`、`FormPet.Motion.cs`、`Animations.cs` 的窗口/运动/缓存思路，以及 `tests/` 的运行时检查；没有直接采用上游 XML 角色协议，也没有改写快照。
+- YimyWalk 新代码选择 `net8.0` Core 与 `net8.0-windows` App，原因是隔离可测试物理和 Windows API，避开上游 .NET Framework 目标包限制；没有把上游整体迁移到新运行时。
 
-- 检查确认当前目录原先只有启动文档，不在外层 Git 仓库内；初始化本地 Git，分支为 `codex/bootstrap`。
-- 保存完整需求到 `docs/PROJECT_SPEC.md`。
-- 获取并固定 eSheep 上游快照 `e2933305157a34818f47d238c74607593d81816d` 到 `vendor/esheep/`，配置 `upstream` 只读远程。
-- 核对上游 README 的 MIT 声明、工程入口、依赖和关键窗口/动画/桌面代码路径。
-- 通过工作区脚本安装 .NET SDK 8.0.425 到 `.tools/dotnet/`，未修改系统 SDK 或安全设置。
-- 写入 AGENTS、README、架构、角色格式、测试和第三方通知材料。
+## 已完成证据
 
-验证和阻塞：
+### 代码已实现
 
-- `git fetch upstream`：通过，远程 master 可用。
-- `git rev-parse upstream/master`：得到固定提交 `e2933305157a34818f47d238c74607593d81816d`。
-- 上游 `DesktopPet_Portable.csproj` 初次 MSBuild：错误 `MSB3644`，缺少 .NET Framework 4.7.2 引用程序集；随后已安装 4.8.1 Developer Pack、NuGet 7.9，并恢复精确 4.7.2 引用程序集到工作区。
-- 上游在引用程序集齐备后继续失败于未使用的 `stdole` COMReference（MSB4181/MSB3283，x86/x64 一致）；可用显式 `-SkipUnusedStdoleComReference` 做不修改上游文件的隔离构建验证。
-- 使用隔离项目副本构建后，x64 和 x86 均生成 `DesktopPet.exe`；两种架构的运动、显示器拓扑和 WinForms 运行时测试均通过。x64 运行时记录 39 次窗口位置变化，x86 记录 37 次；两者都通过拖拽、窗口跟随、窗口落脚、镜像缓存和并发释放检查。
-- Windows GUI、透明命中、托盘、DPI、多显示器和 1/10/50/100 实例性能：未执行。
+- `YimyWalk.Core`：PNG 解码、3×3 帧定义、默认配置、共享定义目录索引、独立实例物理、工作区地面、跳跃/坠落、拖拽/抛掷、定义和渲染引用计数。
+- `YimyWalk.App`：一个实例一个透明分层窗口；同一宿主进程管理所有窗口；托盘菜单、管理器、1/10/50/100 按钮和分批创建队列；窗口透明区域和实体命中分别走 `WM_NCHITTEST`；窗口使用 `WS_EX_NOACTIVATE`。
+- 角色包：`Characters/cat/sprite.png`、`Characters/slime/sprite.png`，均只包含 `sprite.png`。
 
-本轮安装与命令证据：
+### 构建通过
 
-- 全局安装 Microsoft .NET Framework Developer Pack 4.8.1、NuGet CLI 7.9.0；工作区通过 `bootstrap-reference-assemblies.ps1` 恢复 `Microsoft.NETFramework.ReferenceAssemblies.net472` 1.0.3。
-- `scripts/run-upstream-tests.ps1 -Platform x64 -Scales 1 -Displays 0 -SkipBuild`：通过，22 项运动检查及 WinForms 运行时检查全部通过。
-- `scripts/run-upstream-tests.ps1 -Platform x86 -Scales 1 -Displays 0 -SkipBuild`：通过，22 项运动检查及 WinForms 运行时检查全部通过。
-- `origin` 为 `git@github.com:Data-Echo/YimyWalk.git`，`codex/bootstrap` 已推送并跟踪 `origin/codex/bootstrap`。
+- `dotnet restore YimyWalk.sln`：通过。
+- `dotnet test YimyWalk.sln --configuration Release --no-restore`：通过，20 个核心测试。
+- `dotnet build src/YimyWalk.App/YimyWalk.App.csproj --configuration Release -p:Platform=x64`：通过。
+- `scripts/build-yimywalk.ps1`：通过，发布到 `src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/`，并复制角色目录。
+
+### 核心测试通过
+
+- 角色格式、加载校验、物理状态和边界、共享资源生命周期、实例创建/清空均通过。
+- `YimyWalk.Core` 程序集没有引用 WinForms、WindowsBase 或 PresentationCore。
+
+### Windows 桌面已验证
+
+- 在本机 Windows 11 Home 10.0.26200、x64、DPI 120、12th Gen Intel Core i5-12500H、约 15.7 GB 可见内存环境中，发布版启动后保持运行至少 3 秒，随后由测试进程结束；启动时进程约 57.7 MB 工作集、313 个句柄、无主窗口句柄（应用以托盘/宠物窗口生命周期运行）。
+
+### Windows 桌面未验证
+
+以下项目仍未完成可见桌面逐项验收，不能据此宣布 M1 全部验收通过：
+
+- 透明背景点击穿透与可见实体命中分别通过真实测试窗口验证。
+- 拖拽、释放抛掷、焦点不抢占、托盘隐藏/恢复、退出后的窗口/计时器/绘制资源清理。
+- 屏幕上方掉落、实际行走/跳跃/下落和 1、10、50、100 实例真实创建与一键清空。
+- 重复创建/清空后的 CPU、内存、USER/GDI/句柄趋势，多显示器和 DPI 适配。
+
+本环境可以构建并启动 Windows GUI，但本轮没有执行上述交互矩阵；这些条目保持未验证状态。
 
 ## 下一条可执行任务
 
-先由用户审阅 `docs/ARCHITECTURE.md` 和 `docs/CHARACTER_FORMAT.md` 的 M1 设计，再创建核心模拟与角色加载项目；不把上游 XML 直接当作 YimyWalk 角色格式。
+在可见 Windows 桌面会话中启动发布版，按 `docs/TESTING.md` 的矩阵完成 1、10、50、100 创建/清空、透明命中、拖拽抛掷、焦点和资源趋势记录；发现问题后先写失败复现，再修复并重新运行核心测试和发布构建。
