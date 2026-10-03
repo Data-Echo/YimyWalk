@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{51609A85
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YimyWalk.Core.Tests", "tests\YimyWalk.Core.Tests\YimyWalk.Core.Tests.csproj", "{A638F166-2322-4796-A5A6-79664AC6A87A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YimyWalk.App", "src\YimyWalk.App\YimyWalk.App.csproj", "{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{A638F166-2322-4796-A5A6-79664AC6A87A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A638F166-2322-4796-A5A6-79664AC6A87A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A638F166-2322-4796-A5A6-79664AC6A87A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E3DC49F4-FEC9-48BA-A4A4-9A3F528D0737} = {FA060D34-9F42-47D9-81E0-C49896730F0F}
 		{A638F166-2322-4796-A5A6-79664AC6A87A} = {51609A85-9072-4CAA-BD6F-DD1C30CC27D9}
+		{E0A8FB2A-E41F-4ED2-86EF-33D5D3490BAE} = {FA060D34-9F42-47D9-81E0-C49896730F0F}
 	EndGlobalSection
 EndGlobal

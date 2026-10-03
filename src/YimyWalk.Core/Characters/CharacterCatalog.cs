@@ -8,6 +8,7 @@ public sealed class CharacterCatalog
         new Dictionary<string, CharacterDefinition>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<CharacterScanFailure> LastFailures { get; private set; } = Array.Empty<CharacterScanFailure>();
+    public IReadOnlyDictionary<string, CharacterDefinition> Definitions => _definitions;
 
     public bool TryGet(string id, out CharacterDefinition definition)
         => _definitions.TryGetValue(id, out definition!);

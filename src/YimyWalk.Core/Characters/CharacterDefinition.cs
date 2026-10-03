@@ -18,6 +18,7 @@ public sealed class CharacterDefinition : IDisposable
     public required CharacterMovement Movement { get; init; }
     public required CharacterDefaults Defaults { get; init; }
     public required DialogueSet Dialogue { get; init; }
+    public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
 
     public CharacterFrame SelectFrame(FrameKind kind)
     {
