@@ -24,7 +24,7 @@
 ### 构建通过
 
 - `dotnet restore YimyWalk.sln`：通过。
-- `dotnet test YimyWalk.sln --configuration Release --no-restore`：通过，20 个核心测试。
+- `dotnet test YimyWalk.sln --configuration Release --no-restore`：通过，21 个核心测试。
 - `dotnet build src/YimyWalk.App/YimyWalk.App.csproj --configuration Release -p:Platform=x64`：通过。
 - `scripts/build-yimywalk.ps1`：通过，发布到 `src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/`，并复制角色目录。
 
@@ -51,3 +51,4 @@
 ## 下一条可执行任务
 
 在可见 Windows 桌面会话中启动发布版，按 `docs/TESTING.md` 的矩阵完成 1、10、50、100 创建/清空、透明命中、拖拽抛掷、焦点和资源趋势记录；发现问题后先写失败复现，再修复并重新运行核心测试和发布构建。
+
