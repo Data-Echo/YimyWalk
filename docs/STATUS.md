@@ -2,7 +2,7 @@
 
 更新时间：2026-10-05
 当前分支：`codex/bootstrap`
-Current target: M3.1 preparation. M2 foundation code and the available single-display Windows matrix are recorded below; second-display/DPI remains explicitly deferred.
+Current target: M4 stabilization planning. M2 foundation and M3 core fun loop are implemented; available single-display Windows evidence is recorded below, while second-display/DPI remains explicitly deferred.
 
 ## M0 上游决策证据
 
@@ -148,10 +148,24 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 
 **构建与核心测试通过**：`scripts/build-yimywalk.ps1` 通过；Core 77/77 通过，设置 round-trip 覆盖默认关闭和启用保存。
 
-**Windows 桌面已验证**：输入 smoke 真实切换“启用应用切换反馈”开关并验证关闭/开启状态，其他 M3 输入、气泡、虚拟食物和生命周期检查通过。
+**Windows 桌面已验证**：输入 smoke 真实切换“启用应用切换反馈”开关，并启动可关闭的 Notepad 临时进程验证前台进程切换产生台词气泡；测试只使用进程 ID，结束后关闭该进程，未读取标题、路径或文件内容。其他 M3 输入、气泡、虚拟食物和生命周期检查通过。
 
-**Windows 桌面未验证**：本轮没有把真实外部应用启动/切换事件冒充通过；仍需在明确的可见桌面会话中使用一个无数据副作用的测试程序验证进程切换去重、事件台词、关闭后停止检测。第二显示器/DPI 仍暂缓。
+**Windows 桌面未验证**：更长时间、多进程快速切换和权限受限会话仍未验证；第二显示器/DPI 仍暂缓。
 
 ## 下一条可执行任务
 
-完成 M3.4 的真实外部进程切换 smoke（不读取标题/路径，不启动用户程序），然后执行 M3.5 回归交接；外部事件在此之前保持“代码已实现、Windows 桌面未验证”。
+执行 M3.5 回归交接：重复完整核心/构建/输入/批量 smoke，整理资源和权限边界；外部事件的基础单进程切换 smoke 已通过，更长时间与权限矩阵继续保留未验证。
+
+## M3.5 regression handoff (2026-10-05)
+
+**代码已实现**：M3.1 饥饿/无聊/人工喂食、M3.2 限流气泡、M3.3 虚拟食物、M3.4 可选前台进程反馈均已保留在 Core/App 分层；清空、角色刷新和退出路径覆盖了新增事件、食物和气泡资源。
+
+**构建与核心测试通过**：`dotnet test YimyWalk.sln -c Release --no-restore` 77/77；`scripts/build-yimywalk.ps1` 通过并生成 x64 self-contained publish；`git diff --check` 无内容错误（仅换行格式提示）。
+
+**Windows 桌面已验证**：在本轮解锁桌面上，`scripts/desktop-input-smoke.ps1` 通过真实掉落/行走/跳跃/坠落、透明穿透/实体命中、拖拽抛掷、焦点、托盘、角色刷新、管理器开关、创建气泡、虚拟食物认领消费进入 Eat、Notepad 进程切换反馈和退出；`scripts/desktop-smoke.ps1 -Rounds 1 -Role slime` 通过 sprite-only slime、1/10/50/100 创建清空、CACHE=0 和资源计数回落。最近一轮 100 只 CREATE 为 WS 80,900,096、PRIVATE 25,075,712、HANDLES 350、USER 443、GDI 651；CLEAR 为 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 33；Host Dispose 后 USER 10、GDI 27。
+
+**Windows 桌面未验证**：第二显示器/负坐标跨屏/DPI 切换/断开重连、长时间 CPU/内存曲线、权限受限外部事件和更高实例压力仍未验证；100 仍只是压力档位，不是永久上限或流畅性承诺。真实快捷方式读写、移动、隐藏和恢复没有实现，也没有触碰用户桌面文件。
+
+## 下一阶段
+
+已写入 `docs/superpowers/plans/2026-10-05-m4-stabilization.md`。下一条可执行任务是 M4.1：整理角色作者材料、校验入口和发布包自检；随后再处理真实验收中发现的稳定性问题。第二显示器和真实快捷方式继续作为单独的未验证/后续项目。

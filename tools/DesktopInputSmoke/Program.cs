@@ -254,6 +254,19 @@ try
     probe.Activate();
     Invoke(hostType, host, "CreateMany", "cat", 1);
     Pump(100);
+    hostType.GetProperty("ExternalEventsEnabled")!.SetValue(host, true);
+    using (var externalProcess = Process.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true }))
+    {
+        Require(externalProcess is not null, "external event probe process starts");
+        Pump(1200);
+        Require((int)Property(host, "DialogueBubbleCount") > 0, "external process transition produces a dialogue bubble");
+        externalProcess!.CloseMainWindow();
+        externalProcess.WaitForExit(2000);
+    }
+    hostType.GetProperty("ExternalEventsEnabled")!.SetValue(host, false);
+    Console.WriteLine("EXTERNAL_EVENT PROCESS_TRANSITION=PASS");
+    Invoke(hostType, host, "CreateMany", "cat", 1);
+    Pump(100);
     var menuPet = First(Property(windowsRegistry, "Windows"));
     var menuPetForm = (Form)menuPet;
     ClickTrayMenuItem((NotifyIcon)icon, "隐藏宠物");
