@@ -167,7 +167,25 @@ try
     Require((int)Property(session, "ActiveCount") == 0, "clear removes active instances");
     Console.WriteLine("LIFECYCLE HIDE_SHOW=PASS CLEAR=PASS");
 
-    Invoke(hostType, host, "ExitApplication");
+    var manager = (Form)PrivateField(host, "_manager");
+    ClickTrayMenuItem((NotifyIcon)icon, "打开管理器");
+    Require(manager.Visible, "tray menu opens manager");
+    manager.Hide();
+    probe.Activate();
+    Invoke(hostType, host, "CreateMany", "cat", 1);
+    Pump(100);
+    var menuPet = First(Property(windowsRegistry, "Windows"));
+    var menuPetForm = (Form)menuPet;
+    ClickTrayMenuItem((NotifyIcon)icon, "隐藏宠物");
+    Require(!menuPetForm.Visible, "tray menu hides pets");
+    ClickTrayMenuItem((NotifyIcon)icon, "显示宠物");
+    Require(menuPetForm.Visible, "tray menu shows pets");
+    ClickTrayMenuItem((NotifyIcon)icon, "清空宠物");
+    Pump(100);
+    Require((int)Property(session, "ActiveCount") == 0, "tray menu clears pets");
+    Console.WriteLine("TRAY MENU_OPEN_HIDE_SHOW_CLEAR=PASS");
+
+    ClickTrayMenuItem((NotifyIcon)icon, "退出");
     Pump(50);
     if (host is IDisposable exitedHost) exitedHost.Dispose();
     hostDisposed = true;
@@ -237,6 +255,21 @@ static void Pump(int milliseconds)
 static void Require(bool condition, string description)
 {
     if (!condition) throw new InvalidOperationException($"FAIL: {description}");
+}
+
+static void ClickTrayMenuItem(NotifyIcon icon, string text)
+{
+    var menu = icon.ContextMenuStrip ?? throw new InvalidOperationException("tray menu is missing");
+    var item = menu.Items.Cast<ToolStripItem>().SingleOrDefault(candidate => candidate.Text == text)
+        ?? throw new InvalidOperationException($"tray menu item '{text}' is missing");
+    var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
+    menu.Show(new Point(area.Left + 30, area.Top + 30));
+    Pump(50);
+    var point = menu.PointToScreen(new Point(item.Bounds.Left + item.Bounds.Width / 2, item.Bounds.Top + item.Bounds.Height / 2));
+    Native.SetCursorPos(point.X, point.Y);
+    Native.MouseClick();
+    Pump(100);
+    Console.WriteLine($"TRAY MENU_CLICK={text}");
 }
 }
 
