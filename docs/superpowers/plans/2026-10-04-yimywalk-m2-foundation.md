@@ -125,25 +125,27 @@ Task 3 evidence: `SettingsDocumentTests` and the full Core suite pass (53 tests)
 - Create: `src/YimyWalk.App/Host/WindowsDisplayAdapter.cs`.
 - Modify: `src/YimyWalk.App/Host/DesktopWorldSurface.cs`, `PetWindow.cs`, `NativeMethods.cs`, `DesktopInputSmoke/Program.cs`.
 
-- [ ] **Step 1: Write red tests for negative coordinates and display selection.**
+- [x] **Step 1: Write red tests for negative coordinates and display selection.**
 
 Use fake displays with bounds such as `(-1920,0)-(0,1080)` and `(0,0)-(2560,1440)`, different working areas, and a point crossing the boundary. Assert clamping uses the selected display's working area, a missing display relocates to the primary fallback, and no coordinate is rewritten through a positive-only origin assumption.
 
-- [ ] **Step 2: Define pure display contracts.**
+- [x] **Step 2: Define pure display contracts.**
 
 Add immutable `DisplayId`, `DisplayInfo` (bounds, working area, scale, primary flag), and `IDisplayProvider`. Keep Core unaware of `Screen`, DPI APIs, HWNDs, and WinForms. Extend the surface contract with a deterministic display snapshot or point-to-display lookup used by physics; preserve the single-display implementation as the default.
 
-- [ ] **Step 3: Implement the Windows adapter.**
+- [x] **Step 3: Implement the Windows adapter.**
 
 Map `Screen.AllScreens` to `DisplayInfo`, read per-window DPI through `GetDpiForWindow` when a handle exists, and use the system DPI only as a documented fallback. Handle screen enumeration failures by returning the primary working area. Do not change display settings or move user windows.
 
-- [ ] **Step 4: Make pet positioning and hit tests use one coordinate transform.**
+- [x] **Step 4: Make pet positioning and hit tests use one coordinate transform.**
 
 Use screen coordinates for `PetWindow.Location`, `WM_NCHITTEST` lParam conversion, drag positions, and display working areas. Preserve `WS_EX_NOACTIVATE`, `MA_NOACTIVATE`, and `SWP_NOACTIVATE`. Add logging of display count, bounds, working areas, and DPI to the desktop smoke output.
 
-- [ ] **Step 5: Verify what the environment supports.**
+- [x] **Step 5: Verify what the environment supports.**
 
 Run core display tests and `scripts/build-yimywalk.ps1`. On a machine with a second display, run the negative-coordinate/cross-screen matrix; on the current single-display machine record `DISPLAY1` and leave the desktop matrix marked `Windows 桌面未验证`.
+
+Task 4 evidence: `DisplayContractTests` and the full Core suite pass (56 tests). The current Windows desktop reports one `DISPLAY1`; the publish smoke recorded bounds `1536x864`, working area `1536x816`, system scale `1`, while the input smoke recorded the active interactive session as `1920x1080`, working area `1920x1020`, per-window scale `1.25`. Both real desktop smokes passed the existing fall, movement, hit-test, drag, focus, tray, reload, and cleanup checks. Negative-coordinate and cross-display behavior is covered by Core tests but remains Windows desktop unverified because no second display is exposed.
 
 - [ ] **Step 6: Commit.**
 

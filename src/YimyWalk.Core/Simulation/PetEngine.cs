@@ -30,11 +30,11 @@ public sealed class PetEngine
         var delta = (float)Math.Clamp(deltaSeconds, 0, MaxDeltaSeconds);
         if (!Surface.IsValid)
         {
-            RelocateToSurface(pet, Surface.WorkingArea);
+            RelocateToSurface(pet, Surface.WorkingAreaForPoint(pet.FootPosition));
             return;
         }
 
-        var area = Surface.WorkingArea;
+        var area = Surface.WorkingAreaForPoint(pet.FootPosition);
         pet.StateTime += delta;
         pet.AnimationTime += delta;
 
@@ -90,7 +90,7 @@ public sealed class PetEngine
         ArgumentNullException.ThrowIfNull(pet);
         if (pet.State != PetState.Dragged)
             BeginDrag(pet);
-        pet.FootPosition = Surface.IsValid ? Surface.WorkingArea.ClampFoot(footPosition) : footPosition;
+        pet.FootPosition = Surface.IsValid ? Surface.WorkingAreaForPoint(footPosition).ClampFoot(footPosition) : footPosition;
     }
 
     public void ReleaseDrag(PetInstance pet, Vector2 tossVelocity)

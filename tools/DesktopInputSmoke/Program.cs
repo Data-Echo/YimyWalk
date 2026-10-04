@@ -26,6 +26,7 @@ var hostDisposed = false;
 try
 {
     Invoke(hostType, host, "Start");
+    LogDisplays(host);
     Invoke(hostType, host, "CreateMany", "cat", 1);
     Pump(100);
     probe.Activate();
@@ -324,6 +325,22 @@ static IEnumerable<Control> Descendants(Control root)
     {
         yield return child;
         foreach (var nested in Descendants(child)) yield return nested;
+    }
+}
+
+static void LogDisplays(object host)
+{
+    var provider = Property(host, "DisplayProvider");
+    var displays = ((System.Collections.IEnumerable)Property(provider, "Displays")).Cast<object>().ToArray();
+    Console.WriteLine($"DISPLAY COUNT={displays.Length}");
+    foreach (var display in displays)
+    {
+        var id = Property(Property(display, "Id"), "Value");
+        var bounds = Property(display, "Bounds");
+        var workingArea = Property(display, "WorkingArea");
+        var scale = Property(display, "Scale");
+        var primary = Property(display, "IsPrimary");
+        Console.WriteLine($"DISPLAY ID={id} BOUNDS={bounds} WORKING={workingArea} SCALE={scale} PRIMARY={primary}");
     }
 }
 }

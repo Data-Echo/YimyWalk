@@ -3,6 +3,7 @@ using YimyWalk.App.Settings;
 using YimyWalk.App.UI;
 using YimyWalk.App.Windows;
 using YimyWalk.Core.Characters;
+using YimyWalk.Core.Display;
 using YimyWalk.Core.Settings;
 using YimyWalk.Core.Simulation;
 
@@ -55,9 +56,15 @@ internal sealed class AppHost : ApplicationContext
     public SettingsLoadResult SettingsLoad => _settingsLoad;
     public string SelectedRoleId => _settings.SelectedRoleId;
     public float GlobalScale => _settings.Scale;
+    public IDisplayProvider DisplayProvider => _surface.DisplayProvider;
+    public IReadOnlyList<DisplayInfo> Displays => _surface.Snapshot.Displays;
 
     public void Start()
     {
+        if (MainForm is { } form)
+            _surface.RefreshForWindow(form.Handle);
+        else
+            _surface.RefreshNow();
         _settingsLoad = _settingsStore.Load();
         _settings = _settingsLoad.Settings;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");

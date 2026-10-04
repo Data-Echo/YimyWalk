@@ -69,7 +69,6 @@ internal sealed class PetWindow : Form
         var scale = EffectiveScale;
         _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored, scale);
         ClientSize = _surface.Bitmap.Size;
-        var area = _engine.Surface.WorkingArea;
         var x = (int)Math.Round(Instance.FootPosition.X - Instance.Definition.Anchor.X * scale);
         var y = (int)Math.Round(Instance.FootPosition.Y - Instance.Definition.Anchor.Y * scale);
         var location = new Point(x, y);

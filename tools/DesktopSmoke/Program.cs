@@ -35,6 +35,18 @@ var windows = type.GetProperty("Windows")!.GetValue(host)!;
 var active = session.GetType().GetProperty("ActiveCount")!;
 var windowCount = windows.GetType().GetProperty("Count")!;
 type.GetMethod("Start")!.Invoke(host, Array.Empty<object>());
+var displayProvider = type.GetProperty("DisplayProvider")!.GetValue(host)!;
+var displayValues = ((System.Collections.IEnumerable)displayProvider.GetType().GetProperty("Displays")!.GetValue(displayProvider)!).Cast<object>().ToArray();
+Console.WriteLine($"DISPLAY COUNT={displayValues.Length}");
+foreach (var display in displayValues)
+{
+    var id = display.GetType().GetProperty("Id")!.GetValue(display)!;
+    var bounds = display.GetType().GetProperty("Bounds")!.GetValue(display)!;
+    var workingArea = display.GetType().GetProperty("WorkingArea")!.GetValue(display)!;
+    var scale = display.GetType().GetProperty("Scale")!.GetValue(display)!;
+    var primary = display.GetType().GetProperty("IsPrimary")!.GetValue(display)!;
+    Console.WriteLine($"DISPLAY ID={id} BOUNDS={bounds} WORKING={workingArea} SCALE={scale} PRIMARY={primary}");
+}
 
 var characterRoot = (string)type.GetProperty("CharacterRoot")!.GetValue(host)!;
 var catDirectory = Path.Combine(characterRoot, "cat");
