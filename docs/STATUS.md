@@ -2,7 +2,7 @@
 
 更新时间：2026-10-04
 当前分支：`codex/bootstrap`
-当前目标：M1 桌面基线，范围保持为 3×3 角色、Idle/Walk/Jump/Fall、工作区地面、拖拽/抛掷、透明宠物显示、托盘生命周期、多实例创建与清空。
+Current target: M2 foundation. M1 desktop baseline remains the verified scope; M2 starts with atomic role refresh, settings recovery, display/DPI abstractions, and conservative window-surface work.
 
 ## M0 上游决策证据
 
@@ -18,6 +18,7 @@
 ### 代码已实现
 
 - `YimyWalk.Core`：PNG 解码、3×3 帧定义、默认配置、共享定义目录索引、独立实例物理、工作区地面、跳跃/坠落、拖拽/抛掷、定义和渲染引用计数。
+- M2 Task 1 is implemented in Core: `PetSession.RemoveDefinition` lets a refresh stop new instances for a removed role while existing instances retain their leased definition; the new refresh regression test brings the core suite to 42 passing tests.
 - `YimyWalk.App`：一个实例一个透明分层窗口；同一宿主进程管理所有窗口；托盘菜单、管理器、1/10/50/100 按钮和分批创建队列；窗口透明区域和实体命中分别走 `WM_NCHITTEST`；窗口使用 `WS_EX_NOACTIVATE`。
 - 角色包：`Characters/cat/sprite.png`、`Characters/slime/sprite.png`，均只包含 `sprite.png`。
 
@@ -46,11 +47,11 @@
 以下项目仍未完成可见桌面逐项验收，不能据此宣布 M1 全部验收通过：
 
 - Tray menu item display and real mouse clicks are verified. The smoke directly displays `NotifyIcon.ContextMenuStrip` and clicks its items; invoking the menu from the system notification-area icon itself, and double-clicking that icon to open the manager, remain unverified.
-- Current unlocked session exposes one display (`DISPLAY1`, bounds 1536x864, working area 1536x816); multi-monitor, negative-coordinate, DPI-switch, and display disconnect/reconnect checks were not executed because the hardware condition was unavailable.
+- DEFERRED: the second-display/DPI desktop matrix is postponed because this session exposes only `DISPLAY1` (bounds 1536x864, working area 1536x816). It remains `Windows desktop unverified`, not a product failure or a reason to block M2 core work.
 - 更长时间/更多轮次的资源趋势、CPU 曲线和 100 只流畅性仍未验证；当前数据只作为 M1 基线，不是性能承诺。
 
 此前安全桌面遮罩导致的 `LockScreenBackstopFrame` 阻塞已消失；本轮输入矩阵通过的项目已移到“Windows 桌面已验证”。剩余项目仍保持未验证，不通过模拟或文档替代。
 
 ## 下一条可执行任务
 
-Next executable task: use a second-display or DPI test environment when available for the remaining desktop matrix; keep the 20-round resource baseline as the M1 evidence and defer broader rendering changes to the next approved phase.
+Next executable task: implement M2 Task 2, exposing `AppHost.ReloadCharacters()` and a real manager refresh/status entry point while preserving old definitions for existing pets; keep the second-display/DPI matrix deferred.

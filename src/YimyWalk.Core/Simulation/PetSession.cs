@@ -48,6 +48,14 @@ public sealed class PetSession : IDisposable
         return true;
     }
 
+    public bool RemoveDefinition(string id)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!_definitions.Remove(id, out var lease)) return false;
+        lease.Dispose();
+        return true;
+    }
+
     public PetInstance Create(string id, Vector2? footPosition = null)
     {
         if (!_definitions.TryGetValue(id, out var lease))
