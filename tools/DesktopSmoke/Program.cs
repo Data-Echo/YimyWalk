@@ -33,10 +33,19 @@ foreach (var n in new[] { 1, 10, 50, 100 })
         Console.WriteLine($"ROUND {round} CLEAR ACTIVE=0 WINDOWS=0 {Metrics(process)}");
     }
 }
-(host as IDisposable)?.Dispose();
+if (host is IDisposable disposableHost)
+{
+    disposableHost.Dispose();
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+    GC.Collect();
+    using var process = System.Diagnostics.Process.GetCurrentProcess();
+    process.Refresh();
+    Console.WriteLine($"FINAL {Metrics(process)}");
+}
 
 static string Metrics(System.Diagnostics.Process process)
-    => $"WS={process.WorkingSet64} PRIVATE={process.PrivateMemorySize64} HANDLES={process.HandleCount} USER={Native.GetGuiResources(process.Handle, 1)} GDI={Native.GetGuiResources(process.Handle, 0)}";
+    => $"WS={process.WorkingSet64} PRIVATE={process.PrivateMemorySize64} MANAGED={GC.GetTotalMemory(false)} HANDLES={process.HandleCount} USER={Native.GetGuiResources(process.Handle, 1)} GDI={Native.GetGuiResources(process.Handle, 0)}";
 
 static class Native
 {

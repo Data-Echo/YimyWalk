@@ -42,3 +42,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.p
 ```
 
 这些测试属于 M0 上游证据，不会替代 YimyWalk 的桌面验收。
+
+`desktop-smoke.ps1` output also includes `MANAGED` heap and `FINAL` host-Dispose metrics to distinguish active-window cleanup from process allocator retention; these trends are baseline evidence and not a promise of long-term smoothness at 100 instances.
