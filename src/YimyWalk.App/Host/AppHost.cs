@@ -58,13 +58,20 @@ internal sealed class AppHost : ApplicationContext
     public float GlobalScale => _settings.Scale;
     public IDisplayProvider DisplayProvider => _surface.DisplayProvider;
     public IReadOnlyList<DisplayInfo> Displays => _surface.Snapshot.Displays;
+    public bool WindowLandingEnabled { get => _surface.WindowLandingEnabled; set => _surface.WindowLandingEnabled = value; }
+    public bool WindowSurfaceSnapshotValid => _surface.WindowSurfaceSnapshotValid;
+    public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _surface.WindowSurfaceCandidates;
+
+    public void RefreshWindowSurfaces() => _surface.RefreshWindowSurfaces();
 
     public void Start()
     {
+        _surface.ExcludeWindow = IsHostWindow;
         if (MainForm is { } form)
-            _surface.RefreshForWindow(form.Handle);
+        _surface.RefreshForWindow(form.Handle);
         else
             _surface.RefreshNow();
+        _surface.RefreshWindowSurfaces();
         _settingsLoad = _settingsStore.Load();
         _settings = _settingsLoad.Settings;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");
@@ -153,6 +160,13 @@ internal sealed class AppHost : ApplicationContext
         _batch.NotifyRemoved();
     }
 
+    private bool IsHostWindow(IntPtr handle)
+    {
+        if (MainForm?.IsHandleCreated == true && MainForm.Handle == handle) return true;
+        if (_manager.IsHandleCreated && _manager.Handle == handle) return true;
+        return _windows.Windows.Any(window => window.IsHandleCreated && window.Handle == handle);
+    }
+
     private void ApplyDefinitions(IReadOnlyDictionary<string, CharacterDefinition> definitions)
     {
         foreach (var definition in definitions.Values)
@@ -207,6 +221,7 @@ internal sealed class AppHost : ApplicationContext
             _registeredDefinitionIds.Clear();
             _windows.Dispose();
             _surfaceCache.Dispose();
+            _surface.Dispose();
             MainForm?.Dispose();
         }
         base.Dispose(disposing);

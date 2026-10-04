@@ -147,7 +147,7 @@ Run core display tests and `scripts/build-yimywalk.ps1`. On a machine with a sec
 
 Task 4 evidence: `DisplayContractTests` and the full Core suite pass (56 tests). The current Windows desktop reports one `DISPLAY1`; the publish smoke recorded bounds `1536x864`, working area `1536x816`, system scale `1`, while the input smoke recorded the active interactive session as `1920x1080`, working area `1920x1020`, per-window scale `1.25`. Both real desktop smokes passed the existing fall, movement, hit-test, drag, focus, tray, reload, and cleanup checks. Negative-coordinate and cross-display behavior is covered by Core tests but remains Windows desktop unverified because no second display is exposed.
 
-- [ ] **Step 6: Commit.**
+- [x] **Step 6: Commit.**
 
 ```powershell
 git add src/YimyWalk.Core src/YimyWalk.App tests tools docs
@@ -161,25 +161,27 @@ git commit -m "feat: add display and DPI abstraction"
 - Modify: `DesktopWorldSurface.cs`, `AppHost.cs`, `PetEngine.cs`, `PetWindow.cs`, `NativeMethods.cs`.
 - Create: `tests/YimyWalk.Core.Tests/SurfaceSelectionTests.cs` for pure filtering/ordering rules.
 
-- [ ] **Step 1: Write pure selection tests.**
+- [x] **Step 1: Write pure selection tests.**
 
 Given candidate rectangles and process/window metadata, reject YimyWalk windows, hidden/minimized windows, zero-area rectangles, and stale handles; prefer the nearest visible top edge under the pet's horizontal foot span; fall back to the display working-area floor when no candidate qualifies.
 
-- [ ] **Step 2: Implement a low-frequency Windows enumerator.**
+- [x] **Step 2: Implement a low-frequency Windows enumerator.**
 
 Use `EnumWindows`, `IsWindowVisible`, `IsIconic`, `GetWindowRect`, and process-ID filtering only. Never move, minimize, close, or inspect window contents. Refresh candidates on a timer no faster than the simulation surface contract requires, and handle access-denied/stale handles by skipping them.
 
-- [ ] **Step 3: Integrate the fallback state.**
+- [x] **Step 3: Integrate the fallback state.**
 
 When a pet loses its supporting top, enter `Fall`; when enumeration fails or no surface is safe, use the display working-area floor. Exclude the manager and hidden host forms. Keep window-top landing disabled unless the resolver has a valid snapshot, so M1 behavior remains stable while the feature is being validated.
 
-- [ ] **Step 4: Verify only with real windows.**
+- [x] **Step 4: Verify only with real windows.**
 
 Add a Windows desktop harness that opens a test window, observes a pet land on its top, moves/closes the test window, and observes re-fall or floor fallback. A core simulation test or screenshot alone cannot mark this task passed.
 
-- [ ] **Step 5: Commit after real evidence.**
+- [x] **Step 5: Commit after real evidence.**
 
 Run the full test/build suite and the desktop input smoke; commit `feat: add conservative window surface landing` only with the actual desktop result recorded.
+
+Task 5 evidence: `SurfaceSelectionTests` and the full Core suite pass (59 tests). `WindowSurfaceResolver` refreshes visible top-level windows no faster than 250 ms, excludes the host/manager and desktop shell or system overlay classes, skips minimized/stale/zero-area and impractically small windows, and never moves or inspects candidate contents. `PetEngine` selects the nearest eligible top while descending and returns to the display working-area floor when the selected window disappears. `scripts/desktop-smoke.ps1 -Landing` passed on the real Windows desktop: the probe at top 300 received the pet, closing it caused re-fall, and cleanup completed. The test session exposed only `DISPLAY1`; second-display/DPI landing remains unverified.
 
 ## Task 6: Complete M2 regression evidence and handoff
 
@@ -187,23 +189,23 @@ Run the full test/build suite and the desktop input smoke; commit `feat: add con
 - Modify: `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/STATUS.md`, `README.md`.
 - Use: `scripts/test-yimywalk.ps1`, `scripts/build-yimywalk.ps1`, `scripts/desktop-input-smoke.ps1`, `scripts/desktop-smoke.ps1`, plus the display/landing harnesses.
 
-- [ ] **Step 1: Run the core and publish checks.**
+- [x] **Step 1: Run the core and publish checks.**
 
 Record exact commands, exit codes, test counts, publish path, and role packages. Confirm Core still has no Windows assembly references.
 
-- [ ] **Step 2: Run available Windows matrices.**
+- [x] **Step 2: Run available Windows matrices.**
 
 On the current display, rerun 1/10/50/100 creation/clear, reload success/failure, settings recovery, input/focus/transparent hit testing, and exit cleanup. On a second-display/DPI environment, add negative coordinates, cross-screen drag, taskbar changes, display disconnect/reconnect, and DPI transition. Keep unavailable scenarios explicitly marked unverified.
 
-- [ ] **Step 3: Review resource evidence.**
+- [x] **Step 3: Review resource evidence.**
 
 Report active instances, window count, USER/GDI/handles, working set, private bytes, managed heap, and final Dispose metrics. Treat 100 as a pressure tier and do not invent a permanent hard cap or smoothness guarantee.
 
-- [ ] **Step 4: Update architecture and status.**
+- [x] **Step 4: Update architecture and status.**
 
 Document who owns decoded PNG/RGBA frames, shared definitions, platform bitmaps, HWNDs, settings files, and display snapshots. Record the second-display deferral and the next executable task. Separate `代码已实现`, `构建通过`, `核心测试通过`, `Windows 桌面已验证`, and `Windows 桌面未验证`.
 
-- [ ] **Step 5: Final verification and commit.**
+- [x] **Step 5: Final verification and commit.**
 
 Run `git diff --check`, the full test/build/input/smoke commands, inspect `git status --short`, then commit `feat: establish YimyWalk M2 foundation`. Do not call M2 fully accepted while the second-display/DPI and window-top landing matrices remain unverified.
 

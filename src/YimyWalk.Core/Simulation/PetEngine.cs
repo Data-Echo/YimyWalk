@@ -34,7 +34,17 @@ public sealed class PetEngine
             return;
         }
 
-        var area = Surface.WorkingAreaForPoint(pet.FootPosition);
+        var nextFootY = GetNextFootY(pet, delta);
+        var halfWidth = Math.Max(1f, pet.Definition.CellWidth * pet.Definition.Scale / 2f);
+        var selectedSurface = Surface.SurfaceForPet(pet.FootPosition, halfWidth, nextFootY);
+        var area = selectedSurface.Area;
+        if ((pet.State is PetState.Idle or PetState.Walk)
+            && selectedSurface.IsFallback
+            && pet.FootPosition.Y < area.Bottom - 0.5f)
+        {
+            pet.State = PetState.Fall;
+            pet.StateTime = 0;
+        }
         pet.StateTime += delta;
         pet.AnimationTime += delta;
 
@@ -145,5 +155,14 @@ public sealed class PetEngine
         pet.Velocity = Vector2.Zero;
         pet.State = PetState.Fall;
         pet.StateTime = 0;
+    }
+
+    private static float GetNextFootY(PetInstance pet, float delta)
+    {
+        if (pet.State is not (PetState.Jump or PetState.Apex or PetState.Fall))
+            return pet.FootPosition.Y;
+        var vy = Math.Min(pet.Definition.Movement.MaxFallSpeed,
+            pet.Velocity.Y + pet.Definition.Movement.Gravity * delta);
+        return pet.FootPosition.Y + vy * delta;
     }
 }

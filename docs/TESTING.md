@@ -44,3 +44,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.p
 这些测试属于 M0 上游证据，不会替代 YimyWalk 的桌面验收。
 
 `desktop-smoke.ps1` output also includes `MANAGED` heap and `FINAL` host-Dispose metrics to distinguish active-window cleanup from process allocator retention; these trends are baseline evidence and not a promise of long-term smoothness at 100 instances.
+
+## M2 window-top landing
+
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1 -Landing` only in an unlocked, visible Windows desktop session. The harness opens a temporary probe window in an unused region, creates one pet at the probe's horizontal span, verifies that the pet's foot reaches the probe top, closes the probe, and verifies re-fall to the display floor. It does not move, close, or alter existing user windows. A Core selection test or ordinary animation cannot replace this desktop check.

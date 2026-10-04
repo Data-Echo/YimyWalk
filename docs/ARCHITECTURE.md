@@ -36,3 +36,9 @@ M1 已选择并实现上游已验证的“一个宠物实例对应一个透明�
 ## M2 settings boundary
 
 `YimyWalk.Core.Settings.SettingsDocument` owns only validated, immutable data: schema version, selected role, scale, activity rate, dialogue flag, preferred display identifier, and the optional warning limit. `YimyWalk.App.Settings.SettingsStore` owns the user-local JSON file, temporary file, atomic replacement, backup, and recovery diagnostics. It never places a `Form`, HWND, `Bitmap`, decoded PNG, or startup registration field in Core. AppHost loads this document before role selection, ManagerForm persists explicit selection changes, and clean host disposal saves it. The preferred display value is retained until the Windows display adapter task applies it.
+
+## M2 window-surface boundary
+
+`YimyWalk.Core.Display.SurfaceSelector` receives immutable rectangles and metadata only. It rejects hidden, minimized, stale, excluded, invalid, and non-overlapping candidates, then selects the nearest top edge crossed while a pet is descending. If no candidate qualifies, `IWorldSurface` returns the display working-area floor. Core has no HWND, WinForms, `Bitmap`, `EnumWindows`, or desktop shell knowledge.
+
+`YimyWalk.App.Host.WindowSurfaceResolver` owns the low-frequency `EnumWindows` snapshot and the platform filters for desktop shell, DWM/input, UWP child, and tiny helper windows. `DesktopWorldSurface` owns the fallback display snapshot and enables landing only when the host explicitly opts in. The existing M1 mapping remains one pet instance to one layered window, with every window managed by one `AppHost` process. Closing or losing a supporting window therefore changes only the affected pet's surface selection; it never moves or closes the user's window.
