@@ -36,6 +36,18 @@ internal sealed class PetWindow : Form
 
     public PetInstance Instance { get; }
 
+    public void SetVisibleWithoutActivation(bool visible)
+    {
+        if (!IsHandleCreated)
+        {
+            if (visible) Show();
+            else Hide();
+            return;
+        }
+
+        NativeMethods.ShowWindow(Handle, visible ? NativeMethods.SW_SHOWNOACTIVATE : NativeMethods.SW_HIDE);
+    }
+
     protected override bool ShowWithoutActivation => true;
 
     protected override CreateParams CreateParams
@@ -66,6 +78,11 @@ internal sealed class PetWindow : Form
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == NativeMethods.WM_MOUSEACTIVATE)
+        {
+            m.Result = (IntPtr)NativeMethods.MA_NOACTIVATE;
+            return;
+        }
         if (m.Msg == NativeMethods.WM_NCHITTEST && _surface is not null)
         {
             // WM_NCHITTEST supplies the screen coordinate being queried in

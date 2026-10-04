@@ -81,7 +81,8 @@ internal sealed class AppHost : ApplicationContext
 
     public void SetPetsVisible(bool visible)
     {
-        foreach (var window in _windows.Windows) window.Visible = visible;
+        foreach (var window in _windows.Windows)
+            window.SetVisibleWithoutActivation(visible);
     }
 
     public void ExitApplication()

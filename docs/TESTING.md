@@ -11,7 +11,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-yimywalk.ps1
 
 `build-yimywalk.ps1` 会 restore、运行整个解决方案的核心测试，并发布 x64 `net8.0-windows` 应用，同时把 `Characters/` 复制到发布目录。`test-yimywalk.ps1` 只运行 Release 核心测试，适合快速回归。
 
-在可见 Windows 桌面会话中，`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1` 会使用临时 `tools/DesktopSmoke` 宿主真实创建并清空 1、10、50、100 个窗口，并输出工作集和句柄基线。它不验证透明点击、拖拽或焦点行为，这些由输入矩阵单独验证。
+在可见 Windows 桌面会话中，`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1` 会使用临时 `tools/DesktopSmoke` 宿主真实创建并清空 1、10、50、100 个窗口，并输出工作集、私有字节、句柄、USER/GDI 基线；可追加 `-Rounds 3` 在同一宿主进程重复三轮以观察趋势，或追加 `-Role slime` 验证另一套仅含 `sprite.png` 的角色。它不验证透明点击、拖拽或焦点行为，这些由输入矩阵单独验证。
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-input-smoke.ps1` 会在真实 Windows 窗口上执行掉落、行走、跳跃、透明/实体命中、鼠标拖拽、释放抛掷、捕获丢失、焦点和托盘生命周期检查。它会先打印生产窗口自身的 `WM_NCHITTEST` 结果；若当前会话由 `LockScreenBackstopFrame` 等安全桌面窗口截获 `WindowFromPoint`，会输出 `RESULT UNVERIFIED INPUT_ROUTING_BLOCKED`，保留未验证状态而不把环境阻塞当作功能通过。
 

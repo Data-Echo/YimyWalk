@@ -5,17 +5,20 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
-const string PublishPath = "src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/YimyWalk.App.dll";
-
+internal static class Program
+{
+[STAThread]
+private static void Main()
+{
 ApplicationConfiguration.Initialize();
+var savedCursor = Cursor.Position;
 using var probe = new ProbeForm();
 probe.Bounds = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
 probe.Show();
 probe.Activate();
 Pump(100);
 
-var foregroundBeforePet = Native.GetForegroundWindow();
-var app = Assembly.LoadFrom(Path.GetFullPath(PublishPath));
+var app = Assembly.Load("YimyWalk.App");
 var hostType = app.GetType("YimyWalk.App.Host.AppHost", throwOnError: true)!;
 var host = Activator.CreateInstance(hostType, nonPublic: true)!;
 var hostDisposed = false;
@@ -25,11 +28,18 @@ try
     Invoke(hostType, host, "Start");
     Invoke(hostType, host, "CreateMany", "cat", 1);
     Pump(100);
+    probe.Activate();
+    Pump(50);
+    Console.WriteLine($"FOCUS SETUP={Native.GetForegroundWindow()} PROBE={probe.Handle}");
 
     var session = Property(host, "Session");
     var windowsRegistry = Property(host, "Windows");
     var pet = First(Property(windowsRegistry, "Windows"));
     var petForm = (Form)pet;
+    petForm.Activated += (_, _) => Console.WriteLine("EVENT PET_ACTIVATED");
+    petForm.Deactivate += (_, _) => Console.WriteLine("EVENT PET_DEACTIVATED");
+    petForm.MouseDown += (_, _) => Console.WriteLine($"EVENT MOUSE_DOWN state={State(Property(pet, "Instance"))} capture={petForm.Capture}");
+    petForm.MouseCaptureChanged += (_, _) => Console.WriteLine($"EVENT CAPTURE={petForm.Capture}");
     var instance = Property(pet, "Instance");
     var initialY = Foot(instance).Y;
     WaitUntil(() => string.Equals(State(instance), "Idle", StringComparison.Ordinal), 5000, "fall-to-floor");
@@ -85,7 +95,7 @@ try
 
     var transparentRoot = Native.GetAncestor(transparentTarget, Native.GA_ROOT);
     var entityRoot = Native.GetAncestor(entityTarget, Native.GA_ROOT);
-    if (transparentRoot != probe.Handle || entityRoot != petForm.Handle)
+    if (Native.Describe(transparentRoot).Contains("class=LockScreenBackstopFrame") || Native.Describe(entityRoot).Contains("class=LockScreenBackstopFrame"))
     {
         Console.WriteLine($"RESULT UNVERIFIED INPUT_ROUTING_BLOCKED transparentRoot={Native.Describe(transparentRoot)} entityRoot={Native.Describe(entityRoot)}");
         Environment.ExitCode = 2;
@@ -95,17 +105,20 @@ try
     Require(entityRoot == petForm.Handle, "entity pixel hits pet window");
     Console.WriteLine($"HIT TRANSPARENT={transparentTarget} ENTITY={entityTarget} PET={petForm.Handle} PROBE={probe.Handle}");
 
-    var foregroundAtHit = Native.GetForegroundWindow();
+    Console.WriteLine($"FOCUS BEFORE_PROBE_CLICK={Native.GetForegroundWindow()} PROBE={probe.Handle}");
     Native.SetCursorPos(transparentScreen.X, transparentScreen.Y);
     Native.MouseClick();
     Pump(100);
     Require(probe.Clicks > 0, "transparent click reached underlying probe");
-    Require(Native.GetForegroundWindow() == foregroundAtHit, "transparent click keeps foreground window");
+    Console.WriteLine($"FOCUS AFTER_PROBE_CLICK={Native.GetForegroundWindow()} PROBE={probe.Handle}");
+    Require(Native.GetForegroundWindow() == probe.Handle, "transparent click activates underlying probe");
+    var foregroundAtHit = probe.Handle;
 
     var startFoot = Foot(instance);
     Native.SetCursorPos(opaqueScreen.X, opaqueScreen.Y);
     Native.MouseDown();
     Pump(80);
+    Console.WriteLine($"DRAG DIAG state={State(instance)} capture={petForm.Capture} foreground={Native.GetForegroundWindow()} point={Cursor.Position} target={Native.WindowFromPoint(Cursor.Position)}");
     Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "entity mouse down starts drag");
     Require(Native.GetForegroundWindow() == foregroundAtHit, "entity drag does not activate pet window");
     var dragPoint = new Point(opaqueScreen.X + 120, opaqueScreen.Y - 80);
@@ -119,21 +132,32 @@ try
     Require(!string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "mouse release ends drag");
     Console.WriteLine($"INPUT DRAG_START={startFoot.X:0.0},{startFoot.Y:0.0} DRAG_END={draggedFoot.X:0.0},{draggedFoot.Y:0.0} RELEASE_STATE={State(instance)}");
 
-    Native.SetCursorPos(opaqueScreen.X, opaqueScreen.Y);
+    // The window moved during the first drag. Locate the entity in its new bounds.
+    surface = PrivateField(pet, "_surface");
+    alpha = (byte[])Property(surface, "Alpha");
+    opaque = FindPixel(alpha, petForm.Size, a => a >= 12);
+    Native.SetCursorPos(petForm.Left + opaque!.Value.X, petForm.Top + opaque.Value.Y);
     Native.MouseDown();
     Pump(50);
     Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "second drag starts");
     Native.ReleaseCapture();
+    Native.MouseUp();
     Pump(100);
     Require(!string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "capture loss releases drag");
     Console.WriteLine($"INPUT CAPTURE_LOSS_STATE={State(instance)}");
 
+    probe.Activate();
+    Pump(50);
+    var foregroundBeforeVisibility = Native.GetForegroundWindow();
     Invoke(hostType, host, "SetPetsVisible", false);
     Pump(50);
     Require(!petForm.Visible, "tray hide action hides pet windows");
+    Require(Native.GetForegroundWindow() == foregroundBeforeVisibility, "tray hide keeps foreground window");
     Invoke(hostType, host, "SetPetsVisible", true);
     Pump(50);
     Require(petForm.Visible, "tray show action restores pet windows");
+    Console.WriteLine($"FOCUS VISIBILITY_BEFORE={foregroundBeforeVisibility} AFTER={Native.GetForegroundWindow()} PET={petForm.Handle} PROBE={probe.Handle}");
+    Require(Native.GetForegroundWindow() == foregroundBeforeVisibility, "tray show keeps foreground window");
 
     var tray = PrivateField(host, "_tray");
     var icon = PrivateField(tray, "_icon");
@@ -142,20 +166,28 @@ try
     Pump(100);
     Require((int)Property(session, "ActiveCount") == 0, "clear removes active instances");
     Console.WriteLine("LIFECYCLE HIDE_SHOW=PASS CLEAR=PASS");
+
+    Invoke(hostType, host, "ExitApplication");
+    Pump(50);
+    if (host is IDisposable exitedHost) exitedHost.Dispose();
+    hostDisposed = true;
+    Require(!(bool)Property(icon, "Visible"), "exit disposes tray icon");
+    Console.WriteLine("LIFECYCLE EXIT_DISPOSE=PASS");
 }
 finally
 {
+    Native.MouseUp();
     if (!hostDisposed)
     {
         if (host is IDisposable disposable) disposable.Dispose();
         hostDisposed = true;
     }
     Pump(100);
+    Cursor.Position = savedCursor;
 }
 
-Require(Native.GetForegroundWindow() == foregroundBeforePet || foregroundBeforePet == IntPtr.Zero,
-    "host disposal leaves foreground ownership outside pet windows");
 Console.WriteLine("RESULT PASS");
+}
 
 static object Invoke(Type type, object target, string name, params object[] args)
     => type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(target, args)!;
@@ -206,6 +238,7 @@ static void Require(bool condition, string description)
 {
     if (!condition) throw new InvalidOperationException($"FAIL: {description}");
 }
+}
 
 sealed class ProbeForm : Form
 {
@@ -214,8 +247,8 @@ sealed class ProbeForm : Form
     public ProbeForm()
     {
         FormBorderStyle = FormBorderStyle.None;
+        StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
-        TopMost = true;
         BackColor = Color.CornflowerBlue;
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) Clicks++; };
     }

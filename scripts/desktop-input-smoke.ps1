@@ -11,7 +11,7 @@ try {
     & (Join-Path $root 'tools\DesktopInputSmoke\bin\x64\Release\net8.0-windows\DesktopInputSmoke.exe')
     if ($LASTEXITCODE -eq 2) {
         Write-Warning 'Desktop input routing is blocked by the current interactive desktop session; GUI acceptance remains unverified.'
-        return
+        exit 2
     }
     if ($LASTEXITCODE -ne 0) { throw "DesktopInputSmoke failed: $LASTEXITCODE" }
 }
