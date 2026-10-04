@@ -32,16 +32,35 @@ internal sealed class DesktopWorldSurface : IWorldSurface
         }
     }
 
+    public WorldRect SpawnArea
+    {
+        get
+        {
+            var snapshot = GetSnapshot();
+            var preferred = PreferredDisplayId is { } id
+                ? snapshot.Resolve(new Vector2(0, 0), id)
+                : snapshot.Primary;
+            return preferred?.WorkingArea ?? FallbackArea;
+        }
+    }
+
+    public DisplayId? PreferredDisplayId { get; private set; }
+
     public bool IsValid => GetSnapshot().Displays.Count > 0;
     public bool WindowLandingEnabled { get => _windowSurfaces.Enabled; set => _windowSurfaces.Enabled = value; }
     public bool WindowSurfaceSnapshotValid => _windowSurfaces.HasValidSnapshot;
     public Func<IntPtr, bool>? ExcludeWindow { get => _windowSurfaces.ExcludeWindow; set => _windowSurfaces.ExcludeWindow = value; }
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _windowSurfaces.Candidates;
 
-    public SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, float nextFootY)
-        => _windowSurfaces.Select(footPosition, footHalfWidth, nextFootY);
+    public SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, Vector2 nextFootPosition)
+        => _windowSurfaces.Select(footPosition, footHalfWidth, nextFootPosition);
 
     public void RefreshWindowSurfaces() => _windowSurfaces.RefreshNow();
+
+    public void SetPreferredDisplay(string? displayId)
+        => PreferredDisplayId = string.IsNullOrWhiteSpace(displayId) ? null : new DisplayId(displayId);
+
+    public float ScaleForWindow(IntPtr windowHandle) => _adapter.ScaleForWindow(windowHandle);
 
     public void RefreshNow()
     {

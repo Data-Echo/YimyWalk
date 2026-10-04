@@ -6,6 +6,7 @@ using YimyWalk.Core.Characters;
 using YimyWalk.Core.Display;
 using YimyWalk.Core.Settings;
 using YimyWalk.Core.Simulation;
+using System.Diagnostics;
 
 namespace YimyWalk.App.Host;
 
@@ -25,6 +26,7 @@ internal sealed class AppHost : ApplicationContext
     private SettingsDocument _settings = SettingsDocument.Defaults;
     private SettingsLoadResult _settingsLoad = new(SettingsDocument.Defaults, UsedDefaults: true, UsedBackup: false, null);
     private bool _disposed;
+    private long _lastTickTimestamp;
     internal bool IsExiting { get; private set; }
 
     public AppHost()
@@ -58,9 +60,23 @@ internal sealed class AppHost : ApplicationContext
     public float GlobalScale => _settings.Scale;
     public IDisplayProvider DisplayProvider => _surface.DisplayProvider;
     public IReadOnlyList<DisplayInfo> Displays => _surface.Snapshot.Displays;
-    public bool WindowLandingEnabled { get => _surface.WindowLandingEnabled; set => _surface.WindowLandingEnabled = value; }
+    public bool WindowLandingEnabled
+    {
+        get => _surface.WindowLandingEnabled;
+        set
+        {
+            if (_surface.WindowLandingEnabled == value) return;
+            _surface.WindowLandingEnabled = value;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { WindowLandingEnabled = value };
+                SaveSettings();
+            }
+        }
+    }
     public bool WindowSurfaceSnapshotValid => _surface.WindowSurfaceSnapshotValid;
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _surface.WindowSurfaceCandidates;
+    public int CachedSurfaceCount => _surfaceCache.Count;
 
     public void RefreshWindowSurfaces() => _surface.RefreshWindowSurfaces();
 
@@ -74,12 +90,15 @@ internal sealed class AppHost : ApplicationContext
         _surface.RefreshWindowSurfaces();
         _settingsLoad = _settingsStore.Load();
         _settings = _settingsLoad.Settings;
+        _surface.SetPreferredDisplay(_settings.PreferredDisplayId);
+        _surface.WindowLandingEnabled = _settings.WindowLandingEnabled;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
         var definitions = _catalog.Scan(root);
         ApplyDefinitions(definitions);
         _timer.Start();
+        _lastTickTimestamp = Stopwatch.GetTimestamp();
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         _manager.SetSettingsStatus(GetSettingsStatus());
@@ -144,7 +163,12 @@ internal sealed class AppHost : ApplicationContext
 
     private void Tick()
     {
-        _session.Tick(_timer.Interval / 1000d);
+        var now = Stopwatch.GetTimestamp();
+        var delta = _lastTickTimestamp == 0
+            ? _timer.Interval / 1000d
+            : (now - _lastTickTimestamp) / (double)Stopwatch.Frequency;
+        _lastTickTimestamp = now;
+        _session.Tick(Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds));
         foreach (var window in _windows.Windows) window.RefreshFrame();
     }
 

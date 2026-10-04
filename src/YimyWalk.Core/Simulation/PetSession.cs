@@ -130,7 +130,7 @@ public sealed class PetSession : IDisposable
 
     private Vector2 DefaultSpawnPosition(int offset = 0)
     {
-        var area = Surface.WorkingArea;
+        var area = Surface.SpawnArea;
         var x = area.Left + Math.Min(area.Width, 80 + (offset % 10) * 50);
         return new Vector2(x, area.Top - 32);
     }

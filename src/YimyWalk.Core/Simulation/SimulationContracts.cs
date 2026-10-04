@@ -34,8 +34,10 @@ public interface IWorldSurface
     WorldRect WorkingAreaForPoint(Vector2 point)
         => DisplayForPoint(point)?.WorkingArea ?? WorkingArea;
 
-    SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, float nextFootY)
-        => new(WorkingAreaForPoint(footPosition), IsFallback: true, SourceId: null);
+    WorldRect SpawnArea => WorkingArea;
+
+    SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, Vector2 nextFootPosition)
+        => new(WorkingAreaForPoint(nextFootPosition), IsFallback: true, SourceId: null);
 }
 
 public interface IRandomSource

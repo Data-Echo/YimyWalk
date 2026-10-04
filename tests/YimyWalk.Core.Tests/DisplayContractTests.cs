@@ -60,9 +60,25 @@ public sealed class DisplayContractTests
         Assert.Equal(Left.WorkingArea.Bottom, pet.FootPosition.Y);
     }
 
-    private sealed class DisplaySurface(IDisplayProvider displays, WorldRect fallback) : IWorldSurface
+    [Fact]
+    public void NewInstancesUseTheSurfaceSpawnArea()
+    {
+        var displays = new DisplaySnapshot(new[] { Left, Right });
+        var surface = new DisplaySurface(displays, Right.WorkingArea, Left.WorkingArea);
+        using var session = new PetSession(surface, new FixedRandom());
+        var definition = TestSpriteFactory.LoadSpriteOnly("preferred-spawn");
+        session.RegisterDefinition(definition.Id, definition);
+
+        var pet = session.Create(definition.Id);
+
+        Assert.Equal(Left.WorkingArea.Left + 80, pet.FootPosition.X);
+        Assert.Equal(Left.WorkingArea.Top - 32, pet.FootPosition.Y);
+    }
+
+    private sealed class DisplaySurface(IDisplayProvider displays, WorldRect fallback, WorldRect? spawn = null) : IWorldSurface
     {
         public WorldRect WorkingArea { get; } = fallback;
+        public WorldRect SpawnArea { get; } = spawn ?? fallback;
         public bool IsValid => true;
         public IDisplayProvider DisplayProvider { get; } = displays;
     }

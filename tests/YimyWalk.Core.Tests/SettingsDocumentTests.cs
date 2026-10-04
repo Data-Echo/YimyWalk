@@ -15,6 +15,7 @@ public sealed class SettingsDocumentTests
         Assert.Equal(1f, settings.Scale);
         Assert.Equal(1f, settings.ActivityRate);
         Assert.True(settings.DialogueEnabled);
+        Assert.False(settings.WindowLandingEnabled);
         Assert.Null(settings.PreferredDisplayId);
         Assert.Null(settings.WarningLimit);
         Assert.True(settings.TryValidate(out var error), error);
@@ -56,6 +57,7 @@ public sealed class SettingsDocumentTests
             Scale = 1.5f,
             ActivityRate = 0.75f,
             DialogueEnabled = false,
+            WindowLandingEnabled = true,
             PreferredDisplayId = "DISPLAY1",
             WarningLimit = 250
         };

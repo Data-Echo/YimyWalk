@@ -17,6 +17,7 @@ public sealed record SettingsDocument
     public float Scale { get; init; } = 1f;
     public float ActivityRate { get; init; } = 1f;
     public bool DialogueEnabled { get; init; } = true;
+    public bool WindowLandingEnabled { get; init; }
     public string? PreferredDisplayId { get; init; }
     public int? WarningLimit { get; init; }
 

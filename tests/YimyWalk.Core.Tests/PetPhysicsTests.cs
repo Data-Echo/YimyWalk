@@ -1,5 +1,6 @@
 using System.Numerics;
 using YimyWalk.Core.Characters;
+using YimyWalk.Core.Display;
 using YimyWalk.Core.Simulation;
 
 namespace YimyWalk.Core.Tests;
@@ -21,6 +22,18 @@ public sealed class PetPhysicsTests
         Assert.Equal(Area.Bottom, pet.FootPosition.Y, 3);
         Assert.Equal(PetState.Idle, pet.State);
         Assert.Equal(FrameKind.Idle, pet.GetFrameKind());
+    }
+
+    [Fact]
+    public void SpawnRemainsAboveDisplayDuringInitialFallStep()
+    {
+        var pet = NewPet(new Vector2(100, -32));
+        var engine = NewEngine();
+
+        engine.Tick(pet, 0.016);
+
+        Assert.True(pet.FootPosition.Y < Area.Top);
+        Assert.Equal(PetState.Fall, pet.State);
     }
 
     [Fact]
@@ -90,6 +103,62 @@ public sealed class PetPhysicsTests
     }
 
     [Fact]
+    public void AirborneLandingUsesProjectedHorizontalPosition()
+    {
+        var pet = NewPet(new Vector2(50, 250));
+        var surface = new ProjectedSurface(Area);
+        var engine = new PetEngine(surface, new FixedRandom());
+        engine.BeginDrag(pet);
+        engine.ReleaseDrag(pet, new Vector2(1000, 500));
+
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(150, surface.LastNextPosition.X, 3);
+        Assert.Equal(315, pet.FootPosition.Y, 3);
+        Assert.Equal(150, pet.FootPosition.X, 3);
+        Assert.Equal(PetState.Fall, pet.State);
+    }
+
+    [Fact]
+    public void WalkingOffWindowSurfaceFallsInsteadOfReversingAtEdge()
+    {
+        var pet = NewPet(new Vector2(95, 300));
+        pet.StartWalking(FacingDirection.Right);
+        var engine = new PetEngine(new ProjectedSurface(Area), new FixedRandom());
+
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(PetState.Fall, pet.State);
+        Assert.Equal(101, pet.FootPosition.X, 3);
+        Assert.Equal(315, pet.FootPosition.Y, 3);
+    }
+
+    [Fact]
+    public void SpriteOverlapWithoutFootContactDoesNotSnapOntoLedge()
+    {
+        var pet = NewPet(new Vector2(120, 295));
+        var engine = new PetEngine(new ProjectedSurface(Area), new FixedRandom());
+        engine.Tick(pet, 0.1);
+        Assert.Equal(120, pet.FootPosition.X, 3);
+        Assert.Equal(PetState.Fall, pet.State);
+        Assert.True(pet.FootPosition.Y > 300);
+    }
+
+    [Fact]
+    public void MissingDisplayRelocatesIdlePetToAvailableFloor()
+    {
+        var surface = new TestSurface(Area);
+        var engine = new PetEngine(surface, new FixedRandom());
+        var pet = NewPet(new Vector2(100, Area.Bottom));
+        engine.Tick(pet, 0.1);
+        surface.WorkingArea = new WorldRect(-800, 0, 0, 600);
+        surface.IsValid = false;
+        engine.Tick(pet, 0.1);
+        Assert.InRange(pet.FootPosition.X, -800, 0);
+        Assert.InRange(pet.FootPosition.Y, 0, 600);
+    }
+
+    [Fact]
     public void InstancesKeepIndependentMutableStateAndMissingSurfaceRelocatesSafely()
     {
         var first = NewPet(new Vector2(100, Area.Bottom));
@@ -126,8 +195,32 @@ public sealed class PetPhysicsTests
 
     private sealed class TestSurface(WorldRect area) : IWorldSurface
     {
-        public WorldRect WorkingArea { get; } = area;
+        public WorldRect WorkingArea { get; set; } = area;
         public bool IsValid { get; set; } = true;
+    }
+
+    private sealed class ProjectedSurface(WorldRect area) : IWorldSurface
+    {
+        private readonly WindowSurfaceCandidate[] _candidates =
+        {
+            new("ledge", new WorldRect(0, 300, 100, 500), true, false, false, false)
+        };
+
+        public WorldRect WorkingArea { get; } = area;
+        public bool IsValid => true;
+        public Vector2 LastNextPosition { get; private set; }
+
+        public SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, Vector2 nextFootPosition)
+        {
+            LastNextPosition = nextFootPosition;
+            return SurfaceSelector.Select(
+                _candidates,
+                WorkingArea,
+                nextFootPosition.X - footHalfWidth,
+                nextFootPosition.X + footHalfWidth,
+                footPosition.Y,
+                nextFootPosition.Y);
+        }
     }
 
     private sealed class FixedRandom : IRandomSource

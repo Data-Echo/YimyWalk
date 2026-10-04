@@ -8,6 +8,34 @@ namespace YimyWalk.App.Rendering;
 internal sealed class FrameSurfaceCache : IDisposable
 {
     private readonly Dictionary<SurfaceKey, RenderedSurface> _surfaces = new();
+    private readonly Dictionary<CharacterDefinition, int> _definitionUsers = new();
+
+    public int Count => _surfaces.Count;
+
+    public void RetainDefinition(CharacterDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        _definitionUsers.TryGetValue(definition, out var count);
+        _definitionUsers[definition] = count + 1;
+    }
+
+    public void ReleaseDefinition(CharacterDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        if (!_definitionUsers.TryGetValue(definition, out var count)) return;
+        if (count > 1)
+        {
+            _definitionUsers[definition] = count - 1;
+            return;
+        }
+
+        _definitionUsers.Remove(definition);
+        foreach (var key in _surfaces.Keys.Where(key => ReferenceEquals(key.Definition, definition)).ToArray())
+        {
+            _surfaces[key].Dispose();
+            _surfaces.Remove(key);
+        }
+    }
 
     public RenderedSurface Get(CharacterDefinition definition, CharacterFrame frame, bool mirrored, float scale = 1)
     {
@@ -22,6 +50,7 @@ internal sealed class FrameSurfaceCache : IDisposable
     {
         foreach (var surface in _surfaces.Values) surface.Dispose();
         _surfaces.Clear();
+        _definitionUsers.Clear();
     }
 
     private readonly record struct SurfaceKey(CharacterDefinition Definition, int FrameIndex, bool Mirrored, float Scale);

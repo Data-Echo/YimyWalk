@@ -56,6 +56,9 @@ internal sealed class WindowsDisplayAdapter
         });
     }
 
+    public float ScaleForWindow(IntPtr windowHandle)
+        => ReadScale(windowHandle);
+
     private static float ReadScale(IntPtr windowHandle)
     {
         try

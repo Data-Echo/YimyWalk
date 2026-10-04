@@ -8,6 +8,7 @@ internal sealed class PetWindow : Form
 {
     private readonly PetEngine _engine;
     private readonly FrameSurfaceCache _cache;
+    private readonly Host.DesktopWorldSurface? _desktopSurface;
     private readonly float _globalScale;
     private RenderedSurface? _surface;
     private bool _dragging;
@@ -15,12 +16,17 @@ internal sealed class PetWindow : Form
     private DateTime _lastCursorTime;
     private Vector2 _dragVelocity;
     private Point _grabOffset;
+    private bool _cacheDefinitionRetained;
+    private float _dpiScale = 1f;
 
     public PetWindow(PetInstance instance, PetSession session, FrameSurfaceCache cache, float globalScale = 1f)
     {
         Instance = instance;
         _engine = new PetEngine(session.Surface, new Host.SystemRandomSource());
+        _desktopSurface = session.Surface as Host.DesktopWorldSurface;
         _cache = cache;
+        _cache.RetainDefinition(instance.Definition);
+        _cacheDefinitionRetained = true;
         _globalScale = Math.Clamp(globalScale, 0.1f, 8f);
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -37,6 +43,17 @@ internal sealed class PetWindow : Form
     }
 
     public PetInstance Instance { get; }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_cacheDefinitionRetained)
+        {
+            _cacheDefinitionRetained = false;
+            _cache.ReleaseDefinition(Instance.Definition);
+        }
+
+        base.Dispose(disposing);
+    }
 
     public void SetVisibleWithoutActivation(bool visible)
     {
@@ -65,6 +82,12 @@ internal sealed class PetWindow : Form
     public void RefreshFrame()
     {
         if (IsDisposed) return;
+        if (IsHandleCreated && _desktopSurface is not null)
+        {
+            var nextDpiScale = _desktopSurface.ScaleForWindow(Handle);
+            if (float.IsFinite(nextDpiScale) && nextDpiScale > 0)
+                _dpiScale = nextDpiScale;
+        }
         var frame = Instance.Definition.SelectFrame(Instance.GetFrameKind(), Instance.AnimationTime);
         var scale = EffectiveScale;
         _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored, scale);
@@ -146,5 +169,5 @@ internal sealed class PetWindow : Form
         _dragVelocity = Vector2.Zero;
     }
 
-    private float EffectiveScale => Math.Clamp(Instance.Definition.Scale * _globalScale, 0.1f, 64f);
+    private float EffectiveScale => Math.Clamp(Instance.Definition.Scale * _globalScale * _dpiScale, 0.1f, 64f);
 }

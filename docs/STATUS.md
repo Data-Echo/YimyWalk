@@ -1,8 +1,8 @@
 # YimyWalk 状态交接
 
-更新时间：2026-10-04
+更新时间：2026-10-05
 当前分支：`codex/bootstrap`
-Current target: M2 foundation. M1 desktop baseline remains the verified scope; M2 starts with atomic role refresh, settings recovery, display/DPI abstractions, and conservative window-surface work.
+Current target: M3.1 preparation. M2 foundation code and the available single-display Windows matrix are recorded below; second-display/DPI remains explicitly deferred.
 
 ## M0 上游决策证据
 
@@ -57,6 +57,31 @@ Current target: M2 foundation. M1 desktop baseline remains the verified scope; M
 
 Previous next-task note: implement M2 Task 3, validated user settings persistence and atomic recovery; that task is now complete. Keep the second-display/DPI matrix explicitly deferred.
 
+## M2 hardening handoff (2026-10-05)
+
+本轮补齐并验证了此前审查指出的 M2 缺口。Core 的 `PetEngine` 现在用单调时间戳计算受上限保护的 delta；窗口表面选择使用投影后的下一步位置；从实际窗口顶边走出会保持行走水平速度进入坠落；显示表面失效时会按当前可用工作区安全迁移。`WindowSurfaceResolver` 仍只读枚举窗口矩形，保守排除被更高窗口遮挡的顶边，不移动或关闭用户窗口。
+
+管理器新增“允许宠物落到可见窗口顶部”真实开关，默认关闭并写入 `SettingsDocument.WindowLandingEnabled`；关闭管理器时隐藏而不销毁，托盘可重新打开，退出时由宿主统一释放。绘制缓存按角色定义引用计数，最后一个窗口释放后清理该定义的 Bitmap 和缓存项。窗口物理刷新使用单调时钟而不是固定 16ms 假定。
+
+## M2 当前证据
+
+**代码已实现**：角色刷新保留旧实例定义；共享定义、RGBA 与平台 Bitmap 生命周期分层；显示工作区/窗口顶部选择、管理器开关、设置恢复、实例清空和退出清理路径已实现。
+
+**构建通过**：`scripts/build-yimywalk.ps1` 于 2026-10-05 通过，Core 测试、App x64 Release 编译和 publish 均为 0 警告/错误，发布目录为 `src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/`。
+
+**核心测试通过**：`dotnet test YimyWalk.sln --configuration Release --no-restore`，67/67 通过。新增覆盖上方生成不跳顶、投影坠落、走出窗口支撑、显示表面失效迁移、遮挡候选过滤和设置开关默认值。
+
+**Windows 桌面已验证**：
+
+- `scripts/desktop-input-smoke.ps1` 在解锁的 Windows 11 Home 10.0.26200、x64、DPI 120、Intel Core i5-12500H、单 `DISPLAY1`（1920×1080，工作区 1920×1020，窗口 DPI scale 1.25）通过真实掉落、Walk、Jump/Apex/Fall、透明穿透、实体命中、拖拽/抛掷、捕获丢失、焦点保持、托盘隐藏/显示/清空/退出、角色刷新成功/失败保留、管理器刷新按钮、落脚开关和关闭/重新打开管理器。
+- `scripts/desktop-smoke.ps1 -Landing -Rounds 1 -Role slime` 在另一实际 DPI 会话（单 `DISPLAY1` 1536×864，工作区 1536×816，scale 1）通过真实 probe 窗口顶部 Y=300 落脚，关闭 probe 后继续坠落（Y=322.2），并通过 slime sprite-only 角色以及 1/10/50/100 创建/清空。100 只 CREATE 记录 WS 80,084,992、PRIVATE 23,703,552、HANDLES 375、USER 430、GDI 630；CLEAR 后 CACHE=0、USER 31、GDI 30；Host Dispose 后 WS 79,552,512、PRIVATE 23,613,440、HANDLES 365、USER 12、GDI 24。
+
+**Windows 桌面未验证**：第二显示器、负坐标跨屏拖动、每显示器 DPI 元数据、显示器断开/重连和更长时间 CPU/内存曲线仍未验证。`WindowsDisplayAdapter` 当前的 `DisplayInfo.Scale` 是宿主窗口/系统 DPI 快照，不能解释为每个显示器已实测；单窗口 `GetDpiForWindow` 只用于窗口渲染缩放。100 只是压力基线，不是永久上限或流畅性承诺。
+
+## 下一条可执行任务（M3）
+
+执行 `docs/superpowers/plans/2026-10-05-m2-hardening-and-m3.md` 的 M3.1：在不引入窗口或桌面 API 的 Core 中实现 hunger/boredom 独立实例数值、增长率和人工喂食闭环；随后再做受限气泡和虚拟食物。外部应用反馈、真实快捷方式操作和第二显示器继续保持后续/暂缓状态。
+
 ## M2 Task 3 handoff (2026-10-04)
 
 Task 3 is implemented in the working tree. `SettingsDocument` is a validated schema-v1 Core record; `SettingsStore` writes in the user-local `YimyWalk` directory through `settings.json.tmp`, flushes before replacement, keeps `settings.json.bak`, and reports whether defaults or the backup were used. The store never writes to the install directory and startup registration remains disabled.
@@ -84,3 +109,5 @@ Task 5 is implemented. Core now has `WindowSurfaceCandidate`, `SurfaceSelection`
 Evidence: `SurfaceSelectionTests` and the full Core suite pass 59/59; `scripts/build-yimywalk.ps1` passes; `scripts/desktop-smoke.ps1 -Landing` passed on the unlocked Windows desktop with a real probe window (pet landed at top 300, then re-fell after probe close); `scripts/desktop-smoke.ps1 -Rounds 1 -Role cat` passed real 1/10/50/100 creation and clear with active windows returning to zero; `scripts/desktop-input-smoke.ps1` passed fall, walk, jump, transparent/entity hit testing, drag/toss, focus, tray, reload, and cleanup. The landing harness was placed at an unused right-side region and did not move or close existing user windows.
 
 Status distinctions: Task 5 code is implemented, the publish build passes, Core tests pass, and single-display Windows landing is verified. The second-display/DPI matrix remains deferred and Windows-unverified because this session exposes only `DISPLAY1`; no M2 claim treats that matrix as passed. Next executable task: maintain the M2 baseline and add a second-display/DPI desktop run when such hardware is available.
+
+说明：文档中较早的 M2 Task 3–5 handoff 保留为历史交接记录；本节的 2026-10-05 hardening handoff 是当前事实来源，已覆盖其中“窗口顶部落脚未实现”等过时描述。

@@ -58,6 +58,34 @@ public sealed class SurfaceSelectionTests
         Assert.Equal(Floor, selection.Area);
     }
 
+    [Fact]
+    public void RejectsOccludedSurface()
+    {
+        var candidates = new[]
+        {
+            Candidate("covered", new WorldRect(0, 300, 800, 500)) with { IsOccluded = true }
+        };
+
+        var selection = SurfaceSelector.Select(candidates, Floor, footLeft: 100, footRight: 160, currentY: 100, nextY: 800);
+
+        Assert.True(selection.IsFallback);
+        Assert.Equal(Floor, selection.Area);
+    }
+
+    [Fact]
+    public void DoesNotSelectAWindowWhenTheProjectedFootHasPassedItsHorizontalSpan()
+    {
+        var candidates = new[]
+        {
+            Candidate("ledge", new WorldRect(0, 300, 100, 500))
+        };
+
+        var selection = SurfaceSelector.Select(candidates, Floor, footLeft: 140, footRight: 200, currentY: 100, nextY: 800);
+
+        Assert.True(selection.IsFallback);
+        Assert.Equal(Floor, selection.Area);
+    }
+
     private static WindowSurfaceCandidate Candidate(string id, WorldRect bounds)
-        => new(id, bounds, IsVisible: true, IsMinimized: false, IsExcluded: false, IsStale: false);
+        => new(id, bounds, IsVisible: true, IsMinimized: false, IsExcluded: false, IsStale: false, IsOccluded: false);
 }

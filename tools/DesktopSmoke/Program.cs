@@ -36,6 +36,7 @@ var session = type.GetProperty("Session")!.GetValue(host)!;
 var windows = type.GetProperty("Windows")!.GetValue(host)!;
 var active = session.GetType().GetProperty("ActiveCount")!;
 var windowCount = windows.GetType().GetProperty("Count")!;
+var cachedSurfaceCount = type.GetProperty("CachedSurfaceCount")!;
 type.GetMethod("Start")!.Invoke(host, Array.Empty<object>());
 var displayProvider = type.GetProperty("DisplayProvider")!.GetValue(host)!;
 var displayValues = ((System.Collections.IEnumerable)displayProvider.GetType().GetProperty("Displays")!.GetValue(displayProvider)!).Cast<object>().ToArray();
@@ -157,10 +158,12 @@ foreach (var n in new[] { 1, 10, 50, 100 })
     GC.Collect();
     GC.WaitForPendingFinalizers();
     GC.Collect();
+    if ((int)cachedSurfaceCount.GetValue(host)! != 0)
+        throw new InvalidOperationException("clear did not release cached rendering surfaces");
     using (var process = System.Diagnostics.Process.GetCurrentProcess())
     {
         process.Refresh();
-        Console.WriteLine($"ROUND {round} CLEAR ACTIVE=0 WINDOWS=0 {Metrics(process)}");
+        Console.WriteLine($"ROUND {round} CLEAR ACTIVE=0 WINDOWS=0 CACHE=0 {Metrics(process)}");
     }
 }
 if (host is IDisposable disposableHost)

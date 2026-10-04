@@ -33,54 +33,95 @@ internal sealed class WindowSurfaceResolver : IDisposable
     public Func<IntPtr, bool>? ExcludeWindow { get; set; }
     public IReadOnlyList<WindowSurfaceCandidate> Candidates => _candidates;
 
-    public SurfaceSelection Select(Vector2 footPosition, float footHalfWidth, float nextFootY)
+    public SurfaceSelection Select(Vector2 footPosition, float footHalfWidth, Vector2 nextFootPosition)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var fallback = _fallback(footPosition);
+        var fallback = _fallback(nextFootPosition);
         if (!Enabled) return new SurfaceSelection(fallback, IsFallback: true, SourceId: null);
         RefreshIfNeeded();
         if (!_hasSnapshot) return new SurfaceSelection(fallback, IsFallback: true, SourceId: null);
 
-        return SurfaceSelector.Select(
+        var selection = SurfaceSelector.Select(
             _candidates,
             fallback,
-            footPosition.X - footHalfWidth,
-            footPosition.X + footHalfWidth,
+            nextFootPosition.X - footHalfWidth,
+            nextFootPosition.X + footHalfWidth,
             footPosition.Y,
-            nextFootY);
+            nextFootPosition.Y);
+        if (!selection.IsFallback && selection.SourceId is { } sourceId && !IsLiveCandidate(sourceId))
+        {
+            RefreshNow();
+            return SurfaceSelector.Select(
+                _candidates,
+                _fallback(nextFootPosition),
+                nextFootPosition.X - footHalfWidth,
+                nextFootPosition.X + footHalfWidth,
+                footPosition.Y,
+                nextFootPosition.Y);
+        }
+
+        return selection;
     }
 
     public void RefreshNow()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var candidates = new List<WindowSurfaceCandidate>();
+        var zOrder = 0;
         try
         {
-            NativeMethods.EnumWindows((window, _) =>
+            var enumerationSucceeded = NativeMethods.EnumWindows((window, _) =>
             {
                 if (!NativeMethods.IsWindow(window) || !NativeMethods.IsWindowVisible(window) || NativeMethods.IsIconic(window))
                     return true;
-                if (IsDesktopShellWindow(window)) return true;
+                var className = GetWindowClassName(window);
                 if (NativeMethods.GetWindowThreadProcessId(window, out var processId) == 0)
                     return true;
                 if (!NativeMethods.GetWindowRect(window, out var rectangle) || rectangle.Right <= rectangle.Left || rectangle.Bottom <= rectangle.Top)
                     return true;
-                if (rectangle.Right - rectangle.Left < MinimumSurfaceWidth
-                    || rectangle.Bottom - rectangle.Top < MinimumSurfaceHeight)
-                    return true;
 
-                var excluded = processId == _hostProcessId
+                var tooSmall = rectangle.Right - rectangle.Left < MinimumSurfaceWidth
+                    || rectangle.Bottom - rectangle.Top < MinimumSurfaceHeight;
+                var hostExcluded = processId == _hostProcessId
                     && (ExcludeWindow is null || ExcludeWindow(window));
+                var unsafeSurface = IsUnsafeSurfaceClass(className);
+                var isBackgroundShell = className is "Progman" or "WorkerW";
                 var id = window.ToInt64().ToString("X", CultureInfo.InvariantCulture);
                 candidates.Add(new WindowSurfaceCandidate(
                     id,
                     new WorldRect(rectangle.Left, rectangle.Top, rectangle.Right, rectangle.Bottom),
                     IsVisible: true,
                     IsMinimized: false,
-                    IsExcluded: excluded,
-                    IsStale: false));
+                    IsExcluded: hostExcluded || unsafeSurface || tooSmall,
+                    IsStale: false,
+                    IsOccluded: false,
+                    ZOrder: zOrder++,
+                    IsOcclusionBlocker: !hostExcluded && !isBackgroundShell && !tooSmall));
                 return true;
             }, IntPtr.Zero);
+            if (!enumerationSucceeded)
+            {
+                _candidates = Array.Empty<WindowSurfaceCandidate>();
+                _hasSnapshot = false;
+                _nextRefreshUtc = DateTime.UtcNow.Add(RefreshInterval);
+                return;
+            }
+
+            for (var index = 0; index < candidates.Count; index++)
+            {
+                var candidate = candidates[index];
+                var occluded = candidates.Any(higher =>
+                    higher.ZOrder < candidate.ZOrder
+                    && higher.IsVisible
+                    && !higher.IsMinimized
+                    && higher.IsOcclusionBlocker
+                    && higher.Bounds.Left < candidate.Bounds.Right
+                    && higher.Bounds.Right > candidate.Bounds.Left
+                    && higher.Bounds.Top <= candidate.Bounds.Top
+                    && higher.Bounds.Bottom > candidate.Bounds.Top);
+                candidates[index] = candidate with { IsOccluded = occluded };
+            }
+
             _candidates = candidates;
             _hasSnapshot = true;
         }
@@ -106,14 +147,28 @@ internal sealed class WindowSurfaceResolver : IDisposable
         if (DateTime.UtcNow >= _nextRefreshUtc) RefreshNow();
     }
 
-    private static bool IsDesktopShellWindow(IntPtr window)
+    private bool IsLiveCandidate(string sourceId)
+    {
+        if (!long.TryParse(sourceId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var raw)) return false;
+        var window = new IntPtr(raw);
+        if (!NativeMethods.IsWindow(window) || !NativeMethods.IsWindowVisible(window) || NativeMethods.IsIconic(window)) return false;
+        if (!NativeMethods.GetWindowRect(window, out var rectangle)) return false;
+        var candidate = _candidates.FirstOrDefault(item => item.Id.Equals(sourceId, StringComparison.OrdinalIgnoreCase));
+        return candidate.IsValid
+            && candidate.Bounds.Left == rectangle.Left
+            && candidate.Bounds.Top == rectangle.Top
+            && candidate.Bounds.Right == rectangle.Right
+            && candidate.Bounds.Bottom == rectangle.Bottom;
+    }
+
+    private static string GetWindowClassName(IntPtr window)
     {
         var name = new StringBuilder(128);
-        if (NativeMethods.GetClassName(window, name, name.Capacity) <= 0) return false;
-        // These are desktop shell, DWM/input, or UWP child/surface windows.
-        // They can be visible and cover the screen while not representing a
-        // user window whose top edge is safe to land on.
-        return name.ToString() is
+        return NativeMethods.GetClassName(window, name, name.Capacity) > 0 ? name.ToString() : string.Empty;
+    }
+
+    private static bool IsUnsafeSurfaceClass(string className)
+        => className is
             "Progman"
             or "WorkerW"
             or "Shell_TrayWnd"
@@ -123,5 +178,4 @@ internal sealed class WindowSurfaceResolver : IDisposable
             or "EdgeUiInputTopWndClass"
             or "DummyDWMListenerWindow"
             or "Windows.UI.Core.CoreWindow";
-    }
 }

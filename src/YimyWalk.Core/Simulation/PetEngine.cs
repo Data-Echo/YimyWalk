@@ -34,14 +34,21 @@ public sealed class PetEngine
             return;
         }
 
-        var nextFootY = GetNextFootY(pet, delta);
-        var halfWidth = Math.Max(1f, pet.Definition.CellWidth * pet.Definition.Scale / 2f);
-        var selectedSurface = Surface.SurfaceForPet(pet.FootPosition, halfWidth, nextFootY);
+        var nextFootPosition = GetNextFootPosition(pet, delta);
+        var halfWidth = pet.State is PetState.Jump or PetState.Apex or PetState.Fall
+            ? Math.Max(1f, pet.Definition.CellWidth * pet.Definition.Scale / 2f)
+            : 0f;
+        var selectedSurface = Surface.SurfaceForPet(pet.FootPosition, halfWidth, nextFootPosition);
         var area = selectedSurface.Area;
         if ((pet.State is PetState.Idle or PetState.Walk)
             && selectedSurface.IsFallback
             && pet.FootPosition.Y < area.Bottom - 0.5f)
         {
+            if (pet.State == PetState.Walk)
+            {
+                var walkSpeed = Math.Clamp(pet.Definition.Movement.WalkSpeed, 0, 1000);
+                pet.Velocity = new Vector2((int)pet.Facing * walkSpeed, pet.Velocity.Y);
+            }
             pet.State = PetState.Fall;
             pet.StateTime = 0;
         }
@@ -146,7 +153,7 @@ public sealed class PetEngine
         }
 
         pet.Velocity = new Vector2(pet.Velocity.X, vy);
-        pet.FootPosition = new Vector2(Math.Clamp(next.X, area.Left, area.Right), Math.Max(area.Top, next.Y));
+        pet.FootPosition = new Vector2(Math.Clamp(next.X, area.Left, area.Right), next.Y);
     }
 
     private static void RelocateToSurface(PetInstance pet, WorldRect area)
@@ -157,12 +164,21 @@ public sealed class PetEngine
         pet.StateTime = 0;
     }
 
-    private static float GetNextFootY(PetInstance pet, float delta)
+    private static Vector2 GetNextFootPosition(PetInstance pet, float delta)
     {
-        if (pet.State is not (PetState.Jump or PetState.Apex or PetState.Fall))
-            return pet.FootPosition.Y;
-        var vy = Math.Min(pet.Definition.Movement.MaxFallSpeed,
-            pet.Velocity.Y + pet.Definition.Movement.Gravity * delta);
-        return pet.FootPosition.Y + vy * delta;
+        if (pet.State == PetState.Walk)
+        {
+            var speed = Math.Clamp(pet.Definition.Movement.WalkSpeed, 0, 1000);
+            return pet.FootPosition + new Vector2((int)pet.Facing * speed * delta, 0);
+        }
+
+        if (pet.State is PetState.Jump or PetState.Apex or PetState.Fall)
+        {
+            var vy = Math.Min(pet.Definition.Movement.MaxFallSpeed,
+                pet.Velocity.Y + pet.Definition.Movement.Gravity * delta);
+            return pet.FootPosition + new Vector2(pet.Velocity.X * delta, vy * delta);
+        }
+
+        return pet.FootPosition;
     }
 }

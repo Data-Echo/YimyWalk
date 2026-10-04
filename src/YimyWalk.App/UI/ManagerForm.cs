@@ -10,6 +10,7 @@ internal sealed class ManagerForm : Form
     private readonly Label _status = new() { AutoSize = true };
     private readonly Label _reloadStatus = new() { AutoSize = true };
     private readonly Label _settingsStatus = new() { AutoSize = true, MaximumSize = new Size(390, 0) };
+    private readonly CheckBox _windowLanding = new() { Text = "允许宠物落到可见窗口顶部", AutoSize = true };
     private bool _synchronizingSelection;
 
     public ManagerForm(AppHost host)
@@ -40,6 +41,7 @@ internal sealed class ManagerForm : Form
         refresh.Click += (_, _) => _host.ReloadCharacters();
         layout.Controls.Add(refresh);
         layout.Controls.Add(clear);
+        layout.Controls.Add(_windowLanding);
         layout.Controls.Add(_count);
         layout.Controls.Add(_status);
         layout.Controls.Add(_reloadStatus);
@@ -53,13 +55,25 @@ internal sealed class ManagerForm : Form
             if (!_synchronizingSelection && _characters.SelectedItem is RoleChoice role)
                 _host.SetSelectedRole(role.Id);
         };
+        _windowLanding.CheckedChanged += (_, _) =>
+        {
+            if (_windowLanding.Checked != _host.WindowLandingEnabled)
+                _host.WindowLandingEnabled = _windowLanding.Checked;
+        };
         Shown += (_, _) => RefreshCharacters();
+        FormClosing += (_, e) =>
+        {
+            if (!_host.IsExiting)
+            {
+                e.Cancel = true;
+                Hide();
+            }
+        };
         FormClosed += (_, _) =>
         {
             _host.Session.InstanceAdded -= OnSessionChanged;
             _host.Session.InstanceRemoved -= OnSessionChanged;
             _host.Batch.Changed -= OnBatchChanged;
-            if (!_host.IsExiting) Hide();
         };
     }
 
@@ -90,6 +104,7 @@ internal sealed class ManagerForm : Form
             !selected.Id.Equals(_host.SelectedRoleId, StringComparison.OrdinalIgnoreCase))
             _host.SetSelectedRole(selected.Id);
         UpdateCount();
+        _windowLanding.Checked = _host.WindowLandingEnabled;
     }
 
     public void UpdateCount()
