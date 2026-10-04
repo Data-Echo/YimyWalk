@@ -17,6 +17,7 @@ internal sealed class AppHost : ApplicationContext
     private readonly BatchCreationQueue _batch;
     private readonly ManagerForm _manager;
     private readonly TrayIconHost _tray;
+    private readonly HashSet<string> _registeredDefinitionIds = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     internal bool IsExiting { get; private set; }
 
@@ -50,10 +51,23 @@ internal sealed class AppHost : ApplicationContext
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
         var definitions = _catalog.Scan(root);
-        foreach (var definition in definitions.Values)
-            _session.RegisterDefinition(definition.Id, definition);
+        ApplyDefinitions(definitions);
         _timer.Start();
         _manager.RefreshCharacters();
+        _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
+    }
+
+    public IReadOnlyList<CharacterScanFailure> ReloadCharacters()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (string.IsNullOrWhiteSpace(CharacterRoot))
+            throw new InvalidOperationException("The host has not been started.");
+
+        var definitions = _catalog.Scan(CharacterRoot);
+        ApplyDefinitions(definitions);
+        _manager.RefreshCharacters();
+        _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
+        return _catalog.LastFailures;
     }
 
     public void CreateMany(string id, int count)
@@ -110,6 +124,19 @@ internal sealed class AppHost : ApplicationContext
         _batch.NotifyRemoved();
     }
 
+    private void ApplyDefinitions(IReadOnlyDictionary<string, CharacterDefinition> definitions)
+    {
+        foreach (var definition in definitions.Values)
+            _session.ReplaceDefinition(definition.Id, definition);
+
+        foreach (var removedId in _registeredDefinitionIds.Where(id => !definitions.ContainsKey(id)).ToArray())
+            _session.RemoveDefinition(removedId);
+
+        _registeredDefinitionIds.Clear();
+        foreach (var id in definitions.Keys)
+            _registeredDefinitionIds.Add(id);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (_disposed) return;
@@ -123,6 +150,7 @@ internal sealed class AppHost : ApplicationContext
             _manager.Dispose();
             _session.Dispose();
             _catalog.Dispose();
+            _registeredDefinitionIds.Clear();
             _windows.Dispose();
             _surfaceCache.Dispose();
             MainForm?.Dispose();

@@ -69,19 +69,19 @@ git commit -m "feat: formalize role refresh lifetimes"
 - Modify: `src/YimyWalk.App/Host/AppHost.cs`, `src/YimyWalk.App/UI/ManagerForm.cs`, `src/YimyWalk.App/UI/TrayIconHost.cs`.
 - Create/modify: `tests` only through the existing desktop smoke harness; no fake GUI pass is accepted.
 
-- [ ] **Step 1: Add a reload command that reports failures.**
+- [x] **Step 1: Add a reload command that reports failures.**
 
 Implement `AppHost.ReloadCharacters()` to rescan `CharacterRoot`, replace only successful role definitions in the session, leave existing instances bound to their old definition, refresh the manager list, and return a read-only failure summary. Keep the previous catalog entry when a package is invalid. Add a manager `刷新角色` button and a status label that shows the number of loaded roles and failed directories; do not show a button that has no implementation.
 
-- [ ] **Step 2: Wire lifecycle tests through a real package change.**
+- [x] **Step 2: Wire lifecycle tests through a real package change.**
 
 Extend a Windows smoke invocation to create `cat`, modify a copy of a role in a temporary workspace, call reload, create a new instance, and assert old/new definition identity through the host reflection boundary. Restore the package before process exit. If the environment cannot safely run this GUI step, mark it unverified and keep the core refresh tests as the evidence.
 
-- [ ] **Step 3: Build and run regression checks.**
+- [x] **Step 3: Build and run regression checks.**
 
 Run `scripts/test-yimywalk.ps1`, `scripts/build-yimywalk.ps1`, and `scripts/desktop-input-smoke.ps1`. Expected: existing input routing remains unchanged and invalid refresh never disposes a definition still used by a pet or renderer.
 
-- [ ] **Step 4: Commit.**
+- [x] **Step 4: Commit.**
 
 ```powershell
 git add src/YimyWalk.App tests tools scripts

@@ -12,6 +12,49 @@ var windows = type.GetProperty("Windows")!.GetValue(host)!;
 var active = session.GetType().GetProperty("ActiveCount")!;
 var windowCount = windows.GetType().GetProperty("Count")!;
 type.GetMethod("Start")!.Invoke(host, Array.Empty<object>());
+
+var characterRoot = (string)type.GetProperty("CharacterRoot")!.GetValue(host)!;
+var catDirectory = Path.Combine(characterRoot, "cat");
+var spritePath = Path.Combine(catDirectory, "sprite.png");
+var configPath = Path.Combine(catDirectory, "character.json");
+var originalSprite = File.ReadAllBytes(spritePath);
+var hadConfig = File.Exists(configPath);
+var originalConfig = hadConfig ? File.ReadAllBytes(configPath) : Array.Empty<byte>();
+try
+{
+    type.GetMethod("CreateMany")!.Invoke(host, new object[] { "cat", 1 });
+    for (var i = 0; i < 10; i++) { Application.DoEvents(); Thread.Sleep(15); }
+    var oldPet = ((System.Collections.IEnumerable)windows.GetType().GetProperty("Windows")!.GetValue(windows)!).Cast<object>().Single();
+    var oldDefinition = oldPet.GetType().GetProperty("Instance")!.GetValue(oldPet)!.GetType().GetProperty("Definition")!.GetValue(oldPet.GetType().GetProperty("Instance")!.GetValue(oldPet)!);
+    File.WriteAllText(configPath, "{\"schemaVersion\":1,\"displayName\":\"Reloaded Cat\"}");
+    var reloadMethod = type.GetMethod("ReloadCharacters") ?? throw new MissingMethodException(type.FullName, "ReloadCharacters");
+    var validFailures = (System.Collections.IEnumerable)reloadMethod.Invoke(host, Array.Empty<object>())!;
+    if (validFailures.Cast<object>().Any()) throw new InvalidOperationException("valid role reload reported failures");
+    type.GetMethod("CreateMany")!.Invoke(host, new object[] { "cat", 1 });
+    for (var i = 0; i < 10; i++) { Application.DoEvents(); Thread.Sleep(15); }
+    var pets = ((System.Collections.IEnumerable)windows.GetType().GetProperty("Windows")!.GetValue(windows)!).Cast<object>().ToArray();
+    var newPet = pets.Single(candidate => !ReferenceEquals(candidate, oldPet));
+    var newInstance = newPet.GetType().GetProperty("Instance")!.GetValue(newPet)!;
+    var newDefinition = newInstance.GetType().GetProperty("Definition")!.GetValue(newInstance);
+    if (ReferenceEquals(oldDefinition, newDefinition)) throw new InvalidOperationException("new pet retained old definition");
+    File.WriteAllBytes(spritePath, new byte[] { 1, 2, 3 });
+    var invalidFailures = (System.Collections.IEnumerable)reloadMethod.Invoke(host, Array.Empty<object>())!;
+    if (!invalidFailures.Cast<object>().Any()) throw new InvalidOperationException("invalid role reload did not report a failure");
+    var catalog = type.GetProperty("Catalog")!.GetValue(host)!;
+    var definitions = catalog.GetType().GetProperty("Definitions")!.GetValue(catalog)!;
+    var retained = definitions.GetType().GetProperty("Item")!.GetValue(definitions, new object[] { "cat" });
+    if (!ReferenceEquals(newDefinition, retained)) throw new InvalidOperationException("failed reload replaced last good definition");
+    Console.WriteLine("ROLE RELOAD SUCCESS_AND_FAILURE_RETENTION=PASS");
+}
+finally
+{
+    File.WriteAllBytes(spritePath, originalSprite);
+    if (hadConfig) File.WriteAllBytes(configPath, originalConfig);
+    else if (File.Exists(configPath)) File.Delete(configPath);
+    type.GetMethod("ClearPets")!.Invoke(host, Array.Empty<object>());
+    type.GetMethod("ReloadCharacters")?.Invoke(host, Array.Empty<object>());
+}
+
 for (var round = 1; round <= rounds; round++)
 foreach (var n in new[] { 1, 10, 50, 100 })
 {

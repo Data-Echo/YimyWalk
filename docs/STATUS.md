@@ -19,6 +19,7 @@ Current target: M2 foundation. M1 desktop baseline remains the verified scope; M
 
 - `YimyWalk.Core`：PNG 解码、3×3 帧定义、默认配置、共享定义目录索引、独立实例物理、工作区地面、跳跃/坠落、拖拽/抛掷、定义和渲染引用计数。
 - M2 Task 1 is implemented in Core: `PetSession.RemoveDefinition` lets a refresh stop new instances for a removed role while existing instances retain their leased definition; the new refresh regression test brings the core suite to 42 passing tests.
+- M2 Task 2 is implemented: `AppHost.ReloadCharacters()` atomically rescans roles, keeps old definitions leased by existing pets, removes deleted roles from new-instance creation, and reports failures; the manager exposes a working `????` button and status count. Real smoke covered valid reload, invalid reload retention, and the button entry point.
 - `YimyWalk.App`：一个实例一个透明分层窗口；同一宿主进程管理所有窗口；托盘菜单、管理器、1/10/50/100 按钮和分批创建队列；窗口透明区域和实体命中分别走 `WM_NCHITTEST`；窗口使用 `WS_EX_NOACTIVATE`。
 - 角色包：`Characters/cat/sprite.png`、`Characters/slime/sprite.png`，均只包含 `sprite.png`。
 
@@ -54,4 +55,4 @@ Current target: M2 foundation. M1 desktop baseline remains the verified scope; M
 
 ## 下一条可执行任务
 
-Next executable task: implement M2 Task 2, exposing `AppHost.ReloadCharacters()` and a real manager refresh/status entry point while preserving old definitions for existing pets; keep the second-display/DPI matrix deferred.
+Next executable task: implement M2 Task 3, validated user settings persistence and atomic recovery; keep the second-display/DPI matrix explicitly deferred.

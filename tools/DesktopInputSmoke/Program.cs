@@ -170,6 +170,11 @@ try
     var manager = (Form)PrivateField(host, "_manager");
     ClickTrayMenuItem((NotifyIcon)icon, "打开管理器");
     Require(manager.Visible, "tray menu opens manager");
+    var refreshButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "刷新角色");
+    Require(refreshButton is not null, "manager exposes refresh role button");
+    refreshButton!.PerformClick();
+    Pump(100);
+    Console.WriteLine("MANAGER REFRESH_BUTTON=PASS");
     manager.Hide();
     probe.Activate();
     Invoke(hostType, host, "CreateMany", "cat", 1);
@@ -184,6 +189,47 @@ try
     Pump(100);
     Require((int)Property(session, "ActiveCount") == 0, "tray menu clears pets");
     Console.WriteLine("TRAY MENU_OPEN_HIDE_SHOW_CLEAR=PASS");
+
+    var characterRoot = (string)Property(host, "CharacterRoot");
+    var catDirectory = Path.Combine(characterRoot, "cat");
+    var spritePath = Path.Combine(catDirectory, "sprite.png");
+    var configPath = Path.Combine(catDirectory, "character.json");
+    var originalSprite = File.ReadAllBytes(spritePath);
+    var hadConfig = File.Exists(configPath);
+    var originalConfig = hadConfig ? File.ReadAllBytes(configPath) : Array.Empty<byte>();
+    try
+    {
+        Invoke(hostType, host, "CreateMany", "cat", 1);
+        Pump(100);
+        var oldReloadPet = First(Property(windowsRegistry, "Windows"));
+        var oldReloadDefinition = Property(Property(oldReloadPet, "Instance"), "Definition");
+        File.WriteAllText(configPath, "{\"schemaVersion\":1,\"displayName\":\"Reloaded Cat\"}");
+        var successfulReloadFailures = (System.Collections.IEnumerable)Invoke(hostType, host, "ReloadCharacters");
+        Require(!successfulReloadFailures.Cast<object>().Any(), "valid role reload has no failures");
+        Invoke(hostType, host, "CreateMany", "cat", 1);
+        Pump(100);
+        var reloadPets = ((System.Collections.IEnumerable)Property(windowsRegistry, "Windows")).Cast<object>().ToArray();
+        var newReloadPet = reloadPets.Single(candidate => !ReferenceEquals(candidate, oldReloadPet));
+        var newReloadDefinition = Property(Property(newReloadPet, "Instance"), "Definition");
+        Require(!ReferenceEquals(oldReloadDefinition, newReloadDefinition), "new pet uses refreshed definition");
+        Require(ReferenceEquals(oldReloadDefinition, Property(Property(oldReloadPet, "Instance"), "Definition")), "existing pet keeps old definition");
+        File.WriteAllBytes(spritePath, new byte[] { 1, 2, 3 });
+        var failedReloadFailures = (System.Collections.IEnumerable)Invoke(hostType, host, "ReloadCharacters");
+        Require(failedReloadFailures.Cast<object>().Any(), "invalid role reload reports a failure");
+        var catalogDefinitions = Property(Property(host, "Catalog"), "Definitions");
+        var retainedDefinition = catalogDefinitions.GetType().GetProperty("Item")!.GetValue(catalogDefinitions, new object[] { "cat" })!;
+        Require(ReferenceEquals(newReloadDefinition, retainedDefinition), "failed reload retains last good definition");
+        Console.WriteLine("ROLE RELOAD SUCCESS_AND_FAILURE_RETENTION=PASS");
+    }
+    finally
+    {
+        File.WriteAllBytes(spritePath, originalSprite);
+        if (hadConfig) File.WriteAllBytes(configPath, originalConfig);
+        else if (File.Exists(configPath)) File.Delete(configPath);
+        Invoke(hostType, host, "ReloadCharacters");
+        Invoke(hostType, host, "ClearPets");
+        Pump(100);
+    }
 
     ClickTrayMenuItem((NotifyIcon)icon, "退出");
     Pump(50);
@@ -270,6 +316,15 @@ static void ClickTrayMenuItem(NotifyIcon icon, string text)
     Native.MouseClick();
     Pump(100);
     Console.WriteLine($"TRAY MENU_CLICK={text}");
+}
+
+static IEnumerable<Control> Descendants(Control root)
+{
+    foreach (Control child in root.Controls)
+    {
+        yield return child;
+        foreach (var nested in Descendants(child)) yield return nested;
+    }
 }
 }
 

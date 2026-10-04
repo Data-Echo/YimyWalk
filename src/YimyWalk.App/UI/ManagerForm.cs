@@ -8,6 +8,7 @@ internal sealed class ManagerForm : Form
     private readonly ComboBox _characters = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 220 };
     private readonly Label _count = new() { AutoSize = true };
     private readonly Label _status = new() { AutoSize = true };
+    private readonly Label _reloadStatus = new() { AutoSize = true };
 
     public ManagerForm(AppHost host)
     {
@@ -31,9 +32,13 @@ internal sealed class ManagerForm : Form
         }
         var clear = new Button { Text = "一键清空", AutoSize = true };
         clear.Click += (_, _) => _host.ClearPets();
+        var refresh = new Button { Text = "刷新角色", AutoSize = true };
+        refresh.Click += (_, _) => _host.ReloadCharacters();
+        layout.Controls.Add(refresh);
         layout.Controls.Add(clear);
         layout.Controls.Add(_count);
         layout.Controls.Add(_status);
+        layout.Controls.Add(_reloadStatus);
         Controls.Add(layout);
         _host.Session.InstanceAdded += OnSessionChanged;
         _host.Session.InstanceRemoved += OnSessionChanged;
@@ -66,6 +71,9 @@ internal sealed class ManagerForm : Form
         _count.Text = $"活动实例：{_host.Session.ActiveCount}";
         _status.Text = $"待创建：{_host.Batch.PendingCount}";
     }
+
+    public void SetReloadStatus(int loadedCount, int failureCount)
+        => _reloadStatus.Text = $"角色：{loadedCount}，刷新失败：{failureCount}";
 
     private void CreateMany(int count)
     {
