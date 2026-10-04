@@ -33,3 +33,6 @@ AppHost/Settings ----------------------------+       (Windows only)
 ## 当前验证边界
 
 M1 已选择并实现上游已验证的“一个宠物实例对应一个透明分层窗口”方案；没有为每只宠物启动进程，也没有预先改成全屏覆盖层。批量 smoke 已在真实 Windows 桌面创建和清空 1、10、50、100 个窗口。透明区域穿透、实体命中、拖拽、焦点、托盘退出、长期资源趋势和多显示器/DPI 仍需在没有安全桌面遮罩的可见会话中逐项验收；未完成前不把普通窗口或核心模拟结果记为桌面通过。
+## M2 settings boundary
+
+`YimyWalk.Core.Settings.SettingsDocument` owns only validated, immutable data: schema version, selected role, scale, activity rate, dialogue flag, preferred display identifier, and the optional warning limit. `YimyWalk.App.Settings.SettingsStore` owns the user-local JSON file, temporary file, atomic replacement, backup, and recovery diagnostics. It never places a `Form`, HWND, `Bitmap`, decoded PNG, or startup registration field in Core. AppHost loads this document before role selection, ManagerForm persists explicit selection changes, and clean host disposal saves it. The preferred display value is retained until the Windows display adapter task applies it.

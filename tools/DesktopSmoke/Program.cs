@@ -5,6 +5,29 @@ using System.Windows.Forms;
 var rounds = args.Length == 0 ? 1 : int.TryParse(args[0], out var parsed) && parsed > 0 && parsed <= 20 ? parsed : throw new ArgumentException("Rounds must be between 1 and 20.");
 var role = args.Length < 2 ? "cat" : args[1];
 var app = Assembly.LoadFrom(Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/YimyWalk.App.dll"));
+var settingsRoot = Path.Combine(Path.GetTempPath(), "YimyWalkSettingsSmoke", Guid.NewGuid().ToString("N"));
+var settingsType = app.GetType("YimyWalk.App.Settings.SettingsStore", true)!;
+var settingsStore = Activator.CreateInstance(settingsType, new object[] { settingsRoot })!;
+var settingsLoad = settingsType.GetMethod("Load")!.Invoke(settingsStore, Array.Empty<object>())!;
+var settingsResultType = settingsLoad.GetType();
+if (!(bool)settingsResultType.GetProperty("UsedDefaults")!.GetValue(settingsLoad)!)
+    throw new InvalidOperationException("missing settings did not use defaults");
+var settingsDocument = Assembly.Load("YimyWalk.Core").GetType("YimyWalk.Core.Settings.SettingsDocument", true)!;
+var defaults = settingsDocument.GetProperty("Defaults")!.GetValue(null)!;
+settingsType.GetMethod("Save")!.Invoke(settingsStore, new[] { defaults });
+settingsType.GetMethod("Save")!.Invoke(settingsStore, new[] { defaults });
+var savedLoad = settingsType.GetMethod("Load")!.Invoke(settingsStore, Array.Empty<object>())!;
+if ((bool)savedLoad.GetType().GetProperty("UsedDefaults")!.GetValue(savedLoad)!)
+    throw new InvalidOperationException("saved settings did not load");
+var settingsPath = (string)settingsType.GetProperty("SettingsPath")!.GetValue(settingsStore)!;
+File.WriteAllBytes(settingsPath, new byte[] { 1, 2, 3 });
+var recoveredLoad = settingsType.GetMethod("Load")!.Invoke(settingsStore, Array.Empty<object>())!;
+if ((bool)recoveredLoad.GetType().GetProperty("UsedDefaults")!.GetValue(recoveredLoad)!)
+    throw new InvalidOperationException("backup settings did not recover");
+if (!(bool)recoveredLoad.GetType().GetProperty("UsedBackup")!.GetValue(recoveredLoad)!)
+    throw new InvalidOperationException("backup settings recovery was not reported");
+Console.WriteLine("SETTINGS STORE DEFAULT_SAVE_BACKUP=PASS");
+Directory.Delete(settingsRoot, recursive: true);
 var type = app.GetType("YimyWalk.App.Host.AppHost", true)!;
 var host = Activator.CreateInstance(type, nonPublic: true)!;
 var session = type.GetProperty("Session")!.GetValue(host)!;

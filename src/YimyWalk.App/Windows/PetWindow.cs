@@ -8,6 +8,7 @@ internal sealed class PetWindow : Form
 {
     private readonly PetEngine _engine;
     private readonly FrameSurfaceCache _cache;
+    private readonly float _globalScale;
     private RenderedSurface? _surface;
     private bool _dragging;
     private Point _lastCursor;
@@ -15,11 +16,12 @@ internal sealed class PetWindow : Form
     private Vector2 _dragVelocity;
     private Point _grabOffset;
 
-    public PetWindow(PetInstance instance, PetSession session, FrameSurfaceCache cache)
+    public PetWindow(PetInstance instance, PetSession session, FrameSurfaceCache cache, float globalScale = 1f)
     {
         Instance = instance;
         _engine = new PetEngine(session.Surface, new Host.SystemRandomSource());
         _cache = cache;
+        _globalScale = Math.Clamp(globalScale, 0.1f, 8f);
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
@@ -64,7 +66,7 @@ internal sealed class PetWindow : Form
     {
         if (IsDisposed) return;
         var frame = Instance.Definition.SelectFrame(Instance.GetFrameKind(), Instance.AnimationTime);
-        var scale = Math.Max(0.1f, Instance.Definition.Scale);
+        var scale = EffectiveScale;
         _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored, scale);
         ClientSize = _surface.Bitmap.Size;
         var area = _engine.Surface.WorkingArea;
@@ -121,7 +123,7 @@ internal sealed class PetWindow : Form
         var cursor = Cursor.Position;
         var now = DateTime.UtcNow;
         var delta = (float)Math.Max(0.001, (now - _lastCursorTime).TotalSeconds);
-        var scale = Math.Max(0.1f, Instance.Definition.Scale);
+        var scale = EffectiveScale;
         var toss = new Vector2((cursor.X - _lastCursor.X) / delta, (cursor.Y - _lastCursor.Y) / delta);
         _lastCursor = cursor;
         _lastCursorTime = now;
@@ -144,4 +146,6 @@ internal sealed class PetWindow : Form
         _engine.ReleaseDrag(Instance, _dragVelocity);
         _dragVelocity = Vector2.Zero;
     }
+
+    private float EffectiveScale => Math.Clamp(Instance.Definition.Scale * _globalScale, 0.1f, 64f);
 }

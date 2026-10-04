@@ -95,25 +95,27 @@ git commit -m "feat: expose safe character reload"
 - Create: `src/YimyWalk.App/Settings/SettingsStore.cs`.
 - Modify: `src/YimyWalk.App/Host/AppHost.cs`, `src/YimyWalk.App/UI/ManagerForm.cs`.
 
-- [ ] **Step 1: Write failing pure tests for defaults, bounds and recovery.**
+- [x] **Step 1: Write failing pure tests for defaults, bounds and recovery.**
 
 Test that default settings select the current role, scale `1.0`, normal activity, automatic dialogue enabled, and no startup registration. Test invalid JSON, unknown fields, negative scale, non-finite numeric values, and counts above the configured soft warning are rejected to defaults without throwing out of startup. Test a valid document round-trips with UTF-8 and an atomic temporary-file replacement path.
 
-- [ ] **Step 2: Implement platform-neutral settings data.**
+- [x] **Step 2: Implement platform-neutral settings data.**
 
 Define an immutable `SettingsDocument` with schema version, selected role ID, scale, activity rate, dialogue enabled, preferred display ID, and optional warning limit. Validate finite values and ranges in one method; do not include HWND, `Form`, `Bitmap`, user file content, startup registration, or external command fields.
 
-- [ ] **Step 3: Implement `SettingsStore`.**
+- [x] **Step 3: Implement `SettingsStore`.**
 
 Store under the user-local application-data directory, never the install directory. Write `settings.json.tmp`, flush/close it, replace the destination atomically where supported, and retain a `.bak` copy. On missing/corrupt/schema-incompatible input, return defaults and a diagnostic result; never delete unrelated files. Tests use a temporary directory only.
 
-- [ ] **Step 4: Load/save at host lifecycle boundaries.**
+- [x] **Step 4: Load/save at host lifecycle boundaries.**
 
 Load before role selection, apply only validated role/scale/display preferences, save on explicit manager changes and clean exit, and keep startup registration disabled. Add a visible recovery status when defaults were used.
 
-- [ ] **Step 5: Run tests and commit.**
+- [x] **Step 5: Run tests and commit.**
 
 Run the settings filter, full core tests, and `scripts/build-yimywalk.ps1`; commit `feat: add recoverable user settings`.
+
+Task 3 evidence: `SettingsDocumentTests` and the full Core suite pass (53 tests). `DesktopSmoke` verifies missing-file defaults, two saves with an atomic replacement, corrupt-primary recovery from `.bak`, role reload retention, and 1/10/50/100 creation and clear on the real Windows desktop. The host loads before role selection, saves selection and validated settings on change/clean exit, applies the stored scale to new windows, and reports default/backup recovery in the manager. Preferred display is retained as a validated setting and remains unapplied until Task 4's display adapter exists.
 
 ## Task 4: Add display/work-area contracts and DPI-safe positioning
 

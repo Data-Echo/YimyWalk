@@ -1,7 +1,9 @@
 using YimyWalk.App.Rendering;
+using YimyWalk.App.Settings;
 using YimyWalk.App.UI;
 using YimyWalk.App.Windows;
 using YimyWalk.Core.Characters;
+using YimyWalk.Core.Settings;
 using YimyWalk.Core.Simulation;
 
 namespace YimyWalk.App.Host;
@@ -12,12 +14,15 @@ internal sealed class AppHost : ApplicationContext
     private readonly PetWindowRegistry _windows = new();
     private readonly FrameSurfaceCache _surfaceCache = new();
     private readonly CharacterCatalog _catalog = new();
+    private readonly SettingsStore _settingsStore = new();
     private readonly PetSession _session;
     private readonly System.Windows.Forms.Timer _timer;
     private readonly BatchCreationQueue _batch;
     private readonly ManagerForm _manager;
     private readonly TrayIconHost _tray;
     private readonly HashSet<string> _registeredDefinitionIds = new(StringComparer.OrdinalIgnoreCase);
+    private SettingsDocument _settings = SettingsDocument.Defaults;
+    private SettingsLoadResult _settingsLoad = new(SettingsDocument.Defaults, UsedDefaults: true, UsedBackup: false, null);
     private bool _disposed;
     internal bool IsExiting { get; private set; }
 
@@ -32,7 +37,9 @@ internal sealed class AppHost : ApplicationContext
         MainForm.Load += (_, _) => MainForm.Hide();
         _batch = new BatchCreationQueue(() =>
         {
-            if (!_catalog.TryGet("cat", out var definition)) throw new InvalidOperationException("cat role is not loaded");
+            if (!_catalog.TryGet(_settings.SelectedRoleId, out var definition))
+                definition = _catalog.Definitions.Values.FirstOrDefault()
+                    ?? throw new InvalidOperationException("no character role is loaded");
             return _session.Create(definition.Id);
         });
         _manager = new ManagerForm(this);
@@ -44,9 +51,15 @@ internal sealed class AppHost : ApplicationContext
     public CharacterCatalog Catalog => _catalog;
     public string CharacterRoot { get; private set; } = string.Empty;
     public BatchCreationQueue Batch => _batch;
+    public SettingsDocument Settings => _settings;
+    public SettingsLoadResult SettingsLoad => _settingsLoad;
+    public string SelectedRoleId => _settings.SelectedRoleId;
+    public float GlobalScale => _settings.Scale;
 
     public void Start()
     {
+        _settingsLoad = _settingsStore.Load();
+        _settings = _settingsLoad.Settings;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
@@ -55,6 +68,7 @@ internal sealed class AppHost : ApplicationContext
         _timer.Start();
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
+        _manager.SetSettingsStatus(GetSettingsStatus());
     }
 
     public IReadOnlyList<CharacterScanFailure> ReloadCharacters()
@@ -87,6 +101,14 @@ internal sealed class AppHost : ApplicationContext
         _batch.Enqueue(() => _session.Create(definition.Id), count);
     }
 
+    public void SetSelectedRole(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !_catalog.TryGet(id, out _)) return;
+        if (_settings.SelectedRoleId.Equals(id, StringComparison.OrdinalIgnoreCase)) return;
+        _settings = _settings with { SelectedRoleId = id };
+        SaveSettings();
+    }
+
     public void ShowManager()
     {
         _manager.Show();
@@ -114,7 +136,7 @@ internal sealed class AppHost : ApplicationContext
 
     private void OnInstanceAdded(PetInstance instance)
     {
-        var window = new PetWindow(instance, _session, _surfaceCache);
+        var window = new PetWindow(instance, _session, _surfaceCache, _settings.Scale);
         _windows.Add(window);
     }
 
@@ -137,12 +159,37 @@ internal sealed class AppHost : ApplicationContext
             _registeredDefinitionIds.Add(id);
     }
 
+    private string GetSettingsStatus()
+    {
+        if (_settingsLoad.UsedBackup) return "Settings: recovered from backup";
+        if (_settingsLoad.UsedDefaults)
+            return string.IsNullOrWhiteSpace(_settingsLoad.Diagnostic)
+                ? "Settings: using defaults"
+                : $"Settings: using defaults ({_settingsLoad.Diagnostic})";
+        return "Settings: loaded";
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            _settingsStore.Save(_settings);
+            _settingsLoad = new SettingsLoadResult(_settings, UsedDefaults: false, UsedBackup: false, null);
+            if (!_disposed) _manager.SetSettingsStatus("Settings: saved");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (!_disposed) _manager.SetSettingsStatus($"Settings: save failed ({ex.Message})");
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (_disposed) return;
         _disposed = true;
         if (disposing)
         {
+            if (CharacterRoot.Length > 0) SaveSettings();
             _timer.Stop();
             _timer.Dispose();
             _batch.Dispose();
