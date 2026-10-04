@@ -53,7 +53,8 @@ public enum PetState
     Jump,
     Apex,
     Fall,
-    Dragged
+    Dragged,
+    Eat
 }
 
 public enum FacingDirection

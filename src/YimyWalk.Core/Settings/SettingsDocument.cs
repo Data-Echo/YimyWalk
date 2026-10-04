@@ -17,6 +17,8 @@ public sealed record SettingsDocument
     public float Scale { get; init; } = 1f;
     public float ActivityRate { get; init; } = 1f;
     public bool DialogueEnabled { get; init; } = true;
+    public bool HungerEnabled { get; init; } = true;
+    public float HungerRate { get; init; } = 1f;
     public bool WindowLandingEnabled { get; init; }
     public string? PreferredDisplayId { get; init; }
     public int? WarningLimit { get; init; }
@@ -36,6 +38,8 @@ public sealed record SettingsDocument
             return Fail($"scale must be between {MinScale} and {MaxScale}", out error);
         if (!IsInRange(ActivityRate, MinActivityRate, MaxActivityRate))
             return Fail($"activityRate must be between {MinActivityRate} and {MaxActivityRate}", out error);
+        if (!IsInRange(HungerRate, MinActivityRate, MaxActivityRate))
+            return Fail($"hungerRate must be between {MinActivityRate} and {MaxActivityRate}", out error);
         if (PreferredDisplayId is { Length: > 128 } or { Length: 0 })
             return Fail("preferredDisplayId must be empty or at most 128 characters", out error);
         if (WarningLimit is <= 0 or > MaxWarningLimit)

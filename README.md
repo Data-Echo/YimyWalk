@@ -12,3 +12,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-yimywalk.ps1
 核心测试和发布构建可在当前工作区运行；真实透明命中、拖拽、焦点、托盘和批量桌面性能矩阵见 [`docs/TESTING.md`](docs/TESTING.md)，当前状态见 [`docs/STATUS.md`](docs/STATUS.md)。
 
 M2 已加入可回滚角色刷新、用户设置恢复、显示器/DPI 抽象和可选窗口顶部落脚。窗口顶部落脚通过 `scripts/desktop-smoke.ps1 -Landing` 在真实 Windows 桌面验证；第二显示器/DPI 矩阵仍按当前环境标记为未验证。
+
+M3.1 已加入每实例 hunger/boredom 数值、可配置增长率、饥饿开关、短暂 Eat 状态和管理器“喂食全部”入口；气泡、虚拟食物和外部应用事件仍按计划分阶段实现。

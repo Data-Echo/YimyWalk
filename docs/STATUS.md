@@ -111,3 +111,13 @@ Evidence: `SurfaceSelectionTests` and the full Core suite pass 59/59; `scripts/b
 Status distinctions: Task 5 code is implemented, the publish build passes, Core tests pass, and single-display Windows landing is verified. The second-display/DPI matrix remains deferred and Windows-unverified because this session exposes only `DISPLAY1`; no M2 claim treats that matrix as passed. Next executable task: maintain the M2 baseline and add a second-display/DPI desktop run when such hardware is available.
 
 说明：文档中较早的 M2 Task 3–5 handoff 保留为历史交接记录；本节的 2026-10-05 hardening handoff 是当前事实来源，已覆盖其中“窗口顶部落脚未实现”等过时描述。
+
+## M3.1 handoff (2026-10-05)
+
+**代码已实现**：`CharacterDefaults.HungerIncreasePerMinute` 现在真正保存在角色定义中，sprite-only 角色使用 0.01/分钟默认值；`PetInstance` 为每只宠物独立保存 Hunger、Boredom 和短暂 Eat 状态；`PetEngine` 使用受限 delta 更新数值，`PetSession` 提供 hunger 开关、0–4 倍增长率和 `FeedAll`。拖拽、跳跃、坠落或已有 Eat 状态时拒绝喂食，缺少专用动作图时继续使用基础帧。管理器提供真实的“启用饥饿增长”和“喂食全部”入口，设置会保存。
+
+**构建与核心测试通过**：`scripts/build-yimywalk.ps1` 通过；`dotnet test YimyWalk.sln --configuration Release --no-restore` 通过 71/71。`PetNeedsTests` 覆盖默认值、配置加载、实例隔离、边界和开关。
+
+**Windows 桌面已验证**：输入 smoke 真实点击并验证饥饿开关、喂食全部进入 Eat、管理器关闭/重开；批量 smoke 以 slime sprite-only 角色重新完成 1/10/50/100 创建和清空，100 CREATE 约 WS 78,209,024、PRIVATE 23,691,264、HANDLES 350、USER 428、GDI 632，CLEAR 后 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 32。
+
+**范围边界**：气泡限流、虚拟食物目标和外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。

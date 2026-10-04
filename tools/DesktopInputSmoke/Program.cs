@@ -73,6 +73,7 @@ try
     var bounds = petForm.Bounds;
     var opaque = FindPixel(alpha, bounds.Size, a => a >= 12);
     var transparent = FindPixel(alpha, bounds.Size, a => a < 12);
+    Invoke(session.GetType(), session, "Resume");
     Require(opaque is not null, "an opaque entity pixel exists");
     Require(transparent is not null, "a transparent pixel inside the window exists");
 
@@ -185,6 +186,28 @@ try
     Pump(50);
     Require(!(bool)Property(host, "WindowLandingEnabled"), "landing toggle disables window landing");
     Console.WriteLine("MANAGER LANDING_TOGGLE=PASS");
+    var hungerToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用饥饿增长");
+    Require(hungerToggle is not null, "manager exposes hunger toggle");
+    hungerToggle!.Checked = false;
+    Pump(50);
+    Require(!(bool)Property(host, "HungerEnabled"), "hunger toggle disables growth");
+    hungerToggle.Checked = true;
+    Pump(50);
+    Require((bool)Property(host, "HungerEnabled"), "hunger toggle enables growth");
+    Console.WriteLine("MANAGER HUNGER_TOGGLE=PASS");
+    var feedButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "喂食全部");
+    Require(feedButton is not null, "manager exposes feed-all entry");
+    Invoke(hostType, host, "CreateMany", "cat", 1);
+    Pump(100);
+    var feedPet = First(Property(windowsRegistry, "Windows"));
+    var feedInstance = Property(feedPet, "Instance");
+    WaitUntil(() => !string.Equals(State(feedInstance), "Fall", StringComparison.Ordinal), 5000, "feed pet reaches a feedable state");
+    feedButton!.PerformClick();
+    Pump(50);
+    Require(string.Equals(State(feedInstance), "Eat", StringComparison.Ordinal), "feed-all entry starts eating state");
+    Console.WriteLine("MANAGER FEED_ALL=PASS");
+    Invoke(hostType, host, "ClearPets");
+    Pump(50);
     manager.Close();
     Pump(50);
     Require(!manager.Visible, "closing manager hides instead of disposing it");

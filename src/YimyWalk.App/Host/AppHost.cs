@@ -74,6 +74,20 @@ internal sealed class AppHost : ApplicationContext
             }
         }
     }
+    public bool HungerEnabled
+    {
+        get => _session.HungerEnabled;
+        set
+        {
+            if (_session.HungerEnabled == value) return;
+            _session.HungerEnabled = value;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { HungerEnabled = value };
+                SaveSettings();
+            }
+        }
+    }
     public bool WindowSurfaceSnapshotValid => _surface.WindowSurfaceSnapshotValid;
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _surface.WindowSurfaceCandidates;
     public int CachedSurfaceCount => _surfaceCache.Count;
@@ -92,6 +106,8 @@ internal sealed class AppHost : ApplicationContext
         _settings = _settingsLoad.Settings;
         _surface.SetPreferredDisplay(_settings.PreferredDisplayId);
         _surface.WindowLandingEnabled = _settings.WindowLandingEnabled;
+        _session.HungerEnabled = _settings.HungerEnabled;
+        _session.NeedRate = _settings.HungerRate;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
@@ -127,6 +143,8 @@ internal sealed class AppHost : ApplicationContext
         _batch.Cancel();
         _session.Clear();
     }
+
+    public int FeedAll() => _session.FeedAll();
 
     public void QueueCreate(string id, int count)
     {

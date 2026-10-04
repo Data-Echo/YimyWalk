@@ -195,7 +195,7 @@ public static class CharacterLoader
             1f,
             new Anchor(cellWidth * 0.5f, cellHeight * 0.9f),
             new CharacterMovement(60f, 450f, 1500f, 1500f),
-            new CharacterDefaults(2f, 8f, 45f),
+            new CharacterDefaults(2f, 8f, 45f, 0.01f),
             new CharacterAnimation(3f, 8f));
 
         var path = Path.Combine(directory, "character.json");
@@ -263,12 +263,12 @@ public static class CharacterLoader
             var idleMin = ReadBoundedPositive(behaviorElement, "idleSecondsMin", 0f, MaxBehaviorSeconds, directory) ?? characterDefaults.IdleSecondsMin;
             var idleMax = ReadBoundedPositive(behaviorElement, "idleSecondsMax", 0f, MaxBehaviorSeconds, directory) ?? characterDefaults.IdleSecondsMax;
             var cooldown = ReadBoundedPositive(behaviorElement, "speechCooldownSeconds", 0f, MaxBehaviorSeconds, directory) ?? characterDefaults.SpeechCooldownSeconds;
-            var hunger = ReadFinite(behaviorElement, "hungerIncreasePerMinute", directory);
+            var hunger = ReadFinite(behaviorElement, "hungerIncreasePerMinute", directory) ?? characterDefaults.HungerIncreasePerMinute;
             if (hunger is < 0 or > 1)
                 throw new CharacterLoadException(directory, "hungerIncreasePerMinute must be between 0 and 1");
             if (idleMax < idleMin)
                 throw new CharacterLoadException(directory, "idleSecondsMax must be at least idleSecondsMin");
-            characterDefaults = new CharacterDefaults(idleMin, idleMax, cooldown);
+            characterDefaults = new CharacterDefaults(idleMin, idleMax, cooldown, hunger);
         }
 
         return new CharacterConfig(displayName, scale, anchor, movement, characterDefaults, animation);

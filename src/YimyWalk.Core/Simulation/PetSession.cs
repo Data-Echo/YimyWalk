@@ -19,6 +19,8 @@ public sealed class PetSession : IDisposable
 
     public int? HardLimit { get; }
     public bool IsPaused { get; private set; }
+    public bool HungerEnabled { get => _engine.HungerEnabled; set => _engine.HungerEnabled = value; }
+    public float NeedRate { get => _engine.NeedRate; set => _engine.NeedRate = Math.Clamp(value, 0f, 4f); }
     public int ActiveCount => _instances.Count;
     public IWorldSurface Surface => _engine.Surface;
     public IReadOnlyCollection<PetInstance> Instances => _instances.Values.Select(value => value.Pet).ToArray();
@@ -96,6 +98,14 @@ public sealed class PetSession : IDisposable
 
     public void Pause() => IsPaused = true;
     public void Resume() => IsPaused = false;
+
+    public int FeedAll()
+    {
+        var fed = 0;
+        foreach (var pet in _instances.Values.Select(value => value.Pet))
+            if (pet.Feed()) fed++;
+        return fed;
+    }
 
     public void Dispose()
     {

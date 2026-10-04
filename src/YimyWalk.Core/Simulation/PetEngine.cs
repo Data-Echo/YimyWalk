@@ -8,6 +8,8 @@ public sealed class PetEngine
     public const double MaxDeltaSeconds = 0.1;
 
     private readonly IRandomSource _random;
+    public bool HungerEnabled { get; set; } = true;
+    public float NeedRate { get; set; } = 1f;
 
     public PetEngine(IWorldSurface surface, IRandomSource random)
     {
@@ -28,6 +30,7 @@ public sealed class PetEngine
     {
         ArgumentNullException.ThrowIfNull(pet);
         var delta = (float)Math.Clamp(deltaSeconds, 0, MaxDeltaSeconds);
+        pet.AdvanceNeeds(delta, HungerEnabled, NeedRate);
         if (!Surface.IsValid)
         {
             RelocateToSurface(pet, Surface.WorkingAreaForPoint(pet.FootPosition));
@@ -89,6 +92,14 @@ public sealed class PetEngine
                     // The random choice is deliberately infrequent and deterministic
                     // under a test source; the third row is never an animation loop.
                     pet.StartWalking(_random.Next(0, 2) == 0 ? FacingDirection.Left : FacingDirection.Right);
+                }
+                break;
+            case PetState.Eat:
+                pet.Velocity = Vector2.Zero;
+                if (pet.StateTime >= 1f)
+                {
+                    pet.State = PetState.Idle;
+                    pet.StateTime = 0;
                 }
                 break;
         }

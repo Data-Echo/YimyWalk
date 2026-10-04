@@ -23,6 +23,8 @@ public sealed class PetInstance
     public float StateTime { get; internal set; }
     public float AnimationTime { get; internal set; }
     public bool IsDragging => State == PetState.Dragged;
+    public float Hunger { get; private set; }
+    public float Boredom { get; private set; }
 
     public void StartWalking(FacingDirection direction)
     {
@@ -37,6 +39,29 @@ public sealed class PetInstance
         State = PetState.Jump;
         StateTime = 0;
         Velocity = new Vector2(Velocity.X, -Definition.Movement.JumpSpeed);
+    }
+
+    public bool Feed(float amount = 0.35f)
+    {
+        if (State is PetState.Dragged or PetState.Jump or PetState.Apex or PetState.Fall or PetState.Eat)
+            return false;
+        if (!float.IsFinite(amount) || amount <= 0) return false;
+        Hunger = Math.Clamp(Hunger - amount, 0f, 1f);
+        State = PetState.Eat;
+        StateTime = 0;
+        Velocity = Vector2.Zero;
+        return true;
+    }
+
+    internal void AdvanceNeeds(float deltaSeconds, bool hungerEnabled, float needRate)
+    {
+        var delta = Math.Clamp(deltaSeconds, 0f, (float)PetEngine.MaxDeltaSeconds);
+        var rate = Math.Clamp(float.IsFinite(needRate) ? needRate : 1f, 0f, 4f);
+        if (hungerEnabled)
+            Hunger = Math.Clamp(Hunger + Definition.Defaults.HungerIncreasePerMinute / 60f * delta * rate, 0f, 1f);
+
+        var boredomDelta = State == PetState.Eat ? -0.01f * delta : 0.001f * delta;
+        Boredom = Math.Clamp(Boredom + boredomDelta, 0f, 1f);
     }
 
     public FrameKind GetFrameKind()

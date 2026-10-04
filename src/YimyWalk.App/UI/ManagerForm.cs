@@ -11,6 +11,7 @@ internal sealed class ManagerForm : Form
     private readonly Label _reloadStatus = new() { AutoSize = true };
     private readonly Label _settingsStatus = new() { AutoSize = true, MaximumSize = new Size(390, 0) };
     private readonly CheckBox _windowLanding = new() { Text = "允许宠物落到可见窗口顶部", AutoSize = true };
+    private readonly CheckBox _hungerEnabled = new() { Text = "启用饥饿增长", AutoSize = true, Checked = true };
     private bool _synchronizingSelection;
 
     public ManagerForm(AppHost host)
@@ -18,7 +19,7 @@ internal sealed class ManagerForm : Form
         _host = host;
         Text = "YimyWalk";
         Width = 430;
-        Height = 245;
+        Height = 275;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -35,13 +36,17 @@ internal sealed class ManagerForm : Form
         }
         var clear = new Button { Text = "\u4e00\u952e\u6e05\u7a7a", AutoSize = true };
         clear.Click += (_, _) => _host.ClearPets();
+        var feed = new Button { Text = "\u5582\u98df\u5168\u90e8", AutoSize = true };
+        feed.Click += (_, _) => _host.FeedAll();
         // Keep the established manager command text; the desktop smoke uses
         // the visible label as its real entry-point assertion.
         var refresh = new Button { Text = "\u5237\u65B0\u89D2\u8272", AutoSize = true };
         refresh.Click += (_, _) => _host.ReloadCharacters();
         layout.Controls.Add(refresh);
         layout.Controls.Add(clear);
+        layout.Controls.Add(feed);
         layout.Controls.Add(_windowLanding);
+        layout.Controls.Add(_hungerEnabled);
         layout.Controls.Add(_count);
         layout.Controls.Add(_status);
         layout.Controls.Add(_reloadStatus);
@@ -59,6 +64,11 @@ internal sealed class ManagerForm : Form
         {
             if (_windowLanding.Checked != _host.WindowLandingEnabled)
                 _host.WindowLandingEnabled = _windowLanding.Checked;
+        };
+        _hungerEnabled.CheckedChanged += (_, _) =>
+        {
+            if (_hungerEnabled.Checked != _host.HungerEnabled)
+                _host.HungerEnabled = _hungerEnabled.Checked;
         };
         Shown += (_, _) => RefreshCharacters();
         FormClosing += (_, e) =>
@@ -105,6 +115,7 @@ internal sealed class ManagerForm : Form
             _host.SetSelectedRole(selected.Id);
         UpdateCount();
         _windowLanding.Checked = _host.WindowLandingEnabled;
+        _hungerEnabled.Checked = _host.HungerEnabled;
     }
 
     public void UpdateCount()
