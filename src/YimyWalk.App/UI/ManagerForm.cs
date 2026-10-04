@@ -13,6 +13,7 @@ internal sealed class ManagerForm : Form
     private readonly CheckBox _windowLanding = new() { Text = "允许宠物落到可见窗口顶部", AutoSize = true };
     private readonly CheckBox _hungerEnabled = new() { Text = "启用饥饿增长", AutoSize = true, Checked = true };
     private readonly CheckBox _dialogueEnabled = new() { Text = "启用自动气泡", AutoSize = true, Checked = true };
+    private readonly CheckBox _externalEvents = new() { Text = "启用应用切换反馈", AutoSize = true };
     private bool _synchronizingSelection;
 
     public ManagerForm(AppHost host)
@@ -52,6 +53,7 @@ internal sealed class ManagerForm : Form
         layout.Controls.Add(_windowLanding);
         layout.Controls.Add(_hungerEnabled);
         layout.Controls.Add(_dialogueEnabled);
+        layout.Controls.Add(_externalEvents);
         layout.Controls.Add(_count);
         layout.Controls.Add(_status);
         layout.Controls.Add(_reloadStatus);
@@ -79,6 +81,11 @@ internal sealed class ManagerForm : Form
         {
             if (_dialogueEnabled.Checked != _host.DialogueEnabled)
                 _host.DialogueEnabled = _dialogueEnabled.Checked;
+        };
+        _externalEvents.CheckedChanged += (_, _) =>
+        {
+            if (_externalEvents.Checked != _host.ExternalEventsEnabled)
+                _host.ExternalEventsEnabled = _externalEvents.Checked;
         };
         Shown += (_, _) => RefreshCharacters();
         FormClosing += (_, e) =>
@@ -127,6 +134,7 @@ internal sealed class ManagerForm : Form
         _windowLanding.Checked = _host.WindowLandingEnabled;
         _hungerEnabled.Checked = _host.HungerEnabled;
         _dialogueEnabled.Checked = _host.DialogueEnabled;
+        _externalEvents.Checked = _host.ExternalEventsEnabled;
     }
 
     public void UpdateCount()

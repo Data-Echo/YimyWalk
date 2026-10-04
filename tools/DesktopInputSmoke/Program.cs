@@ -206,6 +206,15 @@ try
     Pump(50);
     Require((bool)Property(host, "DialogueEnabled"), "dialogue toggle enables bubbles");
     Console.WriteLine("MANAGER DIALOGUE_TOGGLE=PASS");
+    var externalToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用应用切换反馈");
+    Require(externalToggle is not null, "manager exposes external event toggle");
+    externalToggle!.Checked = true;
+    Pump(50);
+    Require((bool)Property(host, "ExternalEventsEnabled"), "external event toggle enables opt-in feedback");
+    externalToggle.Checked = false;
+    Pump(50);
+    Require(!(bool)Property(host, "ExternalEventsEnabled"), "external event toggle disables feedback");
+    Console.WriteLine("MANAGER EXTERNAL_EVENTS_TOGGLE=PASS");
     var feedButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "喂食全部");
     Require(feedButton is not null, "manager exposes feed-all entry");
     var foodButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "生成虚拟食物");

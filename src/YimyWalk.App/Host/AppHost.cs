@@ -33,6 +33,8 @@ internal sealed class AppHost : ApplicationContext
     private bool _disposed;
     private long _lastTickTimestamp;
     private double _dialogueClock;
+    private uint _lastForegroundProcess;
+    private DateTime _nextForegroundCheckUtc;
     internal bool IsExiting { get; private set; }
 
     public AppHost()
@@ -110,6 +112,17 @@ internal sealed class AppHost : ApplicationContext
             if (!_disposed && CharacterRoot.Length > 0) SaveSettings();
         }
     }
+    public bool ExternalEventsEnabled
+    {
+        get => _settings.ExternalEventsEnabled;
+        set
+        {
+            if (_settings.ExternalEventsEnabled == value) return;
+            _settings = _settings with { ExternalEventsEnabled = value };
+            if (!value) _lastForegroundProcess = 0;
+            if (!_disposed && CharacterRoot.Length > 0) SaveSettings();
+        }
+    }
 
     public void RefreshWindowSurfaces() => _surface.RefreshWindowSurfaces();
 
@@ -135,6 +148,7 @@ internal sealed class AppHost : ApplicationContext
         _timer.Start();
         _lastTickTimestamp = Stopwatch.GetTimestamp();
         _dialogueClock = 0;
+        _nextForegroundCheckUtc = DateTime.UtcNow;
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         _manager.SetSettingsStatus(GetSettingsStatus());
@@ -256,6 +270,11 @@ internal sealed class AppHost : ApplicationContext
         }
         _dialogueClock += Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds);
         _dialogue.Advance(_dialogueClock);
+        if (ExternalEventsEnabled && DateTime.UtcNow >= _nextForegroundCheckUtc)
+        {
+            _nextForegroundCheckUtc = DateTime.UtcNow.AddMilliseconds(500);
+            PollForegroundApplication();
+        }
         foreach (var expired in _bubbleWindows.Keys.Where(id => !_dialogue.Active.Any(bubble => bubble.Id == id)).ToArray())
         {
             _bubbleWindows[expired].Dispose();
@@ -305,6 +324,18 @@ internal sealed class AppHost : ApplicationContext
         _dialogue.Clear();
         foreach (var bubble in _bubbleWindows.Values) bubble.Dispose();
         _bubbleWindows.Clear();
+    }
+
+    private void PollForegroundApplication()
+    {
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (foreground == IntPtr.Zero || NativeMethods.GetWindowThreadProcessId(foreground, out var processId) == 0)
+            return;
+        if (processId == (uint)Environment.ProcessId || processId == _lastForegroundProcess)
+            return;
+        _lastForegroundProcess = processId;
+        var instance = _session.Instances.FirstOrDefault();
+        if (instance is not null) PublishDialogue(instance, "program_opened");
     }
 
     private bool IsHostWindow(IntPtr handle)

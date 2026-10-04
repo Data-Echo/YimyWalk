@@ -19,6 +19,7 @@ public sealed record SettingsDocument
     public bool DialogueEnabled { get; init; } = true;
     public bool HungerEnabled { get; init; } = true;
     public float HungerRate { get; init; } = 1f;
+    public bool ExternalEventsEnabled { get; init; }
     public bool WindowLandingEnabled { get; init; }
     public string? PreferredDisplayId { get; init; }
     public int? WarningLimit { get; init; }
