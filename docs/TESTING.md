@@ -15,7 +15,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-yimywalk.ps1
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-input-smoke.ps1` 会在真实 Windows 窗口上执行掉落、行走、跳跃、透明/实体命中、鼠标拖拽、释放抛掷、捕获丢失、焦点和托盘生命周期检查。它会先打印生产窗口自身的 `WM_NCHITTEST` 结果；若当前会话由 `LockScreenBackstopFrame` 等安全桌面窗口截获 `WindowFromPoint`，会输出 `RESULT UNVERIFIED INPUT_ROUTING_BLOCKED`，保留未验证状态而不把环境阻塞当作功能通过。
 
-当前核心测试覆盖：3×3 切帧和 0—8 协议、左向镜像、默认脚底锚点、sprite-only 默认值、坏 PNG/透明图/越界图、受限 delta、坠落和落地、行走边界、跳跃 apex、拖拽和抛掷、实例状态隔离、1/10/50/100 创建与清空、失败刷新保留旧定义、共享资源引用计数和幂等释放，以及 hunger/boredom 独立数值、配置增长率、人工喂食边界和饥饿开关。
+当前核心测试覆盖：3×3 切帧和 0—8 协议、左向镜像、默认脚底锚点、sprite-only 默认值、坏 PNG/透明图/越界图、受限 delta、坠落和落地、行走边界、跳跃 apex、拖拽和抛掷、实例状态隔离、1/10/50/100 创建与清空、失败刷新保留旧定义、共享资源引用计数和幂等释放，以及 hunger/boredom 独立数值、配置增长率、人工喂食边界、饥饿开关、台词限流和虚拟食物认领/消费/超时。
 
 ## Windows 桌面验收矩阵
 

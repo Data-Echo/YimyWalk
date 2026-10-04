@@ -120,7 +120,7 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 
 **Windows 桌面已验证**：输入 smoke 真实点击并验证饥饿开关、喂食全部进入 Eat、管理器关闭/重开；批量 smoke 以 slime sprite-only 角色重新完成 1/10/50/100 创建和清空，100 CREATE 约 WS 78,209,024、PRIVATE 23,691,264、HANDLES 350、USER 428、GDI 632，CLEAR 后 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 32。
 
-**范围边界**：气泡限流、虚拟食物目标和外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。
+**范围边界（当时交接）**：气泡限流、虚拟食物目标和外部应用事件尚未实现；后续 M3.2/M3.3 已分别补齐前两项，第二显示器/DPI 真实矩阵仍暂缓。
 
 ## M3.2 handoff (2026-10-05)
 
@@ -130,4 +130,14 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 
 **Windows 桌面已验证**：输入 smoke 真实观察创建气泡，切换自动气泡开关，且透明区域/实体命中、拖拽、焦点、托盘和管理器生命周期仍通过；批量 smoke 在加入气泡后重新完成 1/10/50/100 创建/清空。100 只 CREATE 约 WS 79,818,752、PRIVATE 24,182,784、HANDLES 350、USER 443、GDI 651；CLEAR 后 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 33。
 
-**范围边界**：虚拟食物目标和外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。
+**范围边界**：外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。
+
+## M3.3 handoff (2026-10-05)
+
+**代码已实现**：Core `VirtualFoodSystem` 只管理程序生成目标，限制目标数、单宠认领和 8 秒过期；中断移动会释放认领，接近后进入 Consumed、缩小并喂食实例。App 的 `FoodWindow` 只绘制小型非激活目标，管理器提供“生成虚拟食物”，一键清空和退出同时清理目标与窗口。
+
+**构建与核心测试通过**：`scripts/build-yimywalk.ps1` 通过；Core 77/77 通过。`VirtualFoodTests` 覆盖单一认领、消费缩小、打断释放、目标上限和无使用者超时。
+
+**Windows 桌面已验证**：输入 smoke 真实生成虚拟食物，创建宠物后完成认领/消费并进入 Eat，随后清空目标；透明穿透、实体命中、拖拽、焦点、气泡和托盘生命周期仍通过。批量 smoke 在虚拟食物代码加入后重新完成 slime 1/10/50/100 创建/清空。
+
+**范围边界**：真实快捷方式操作仍属于后续阶段，外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓。

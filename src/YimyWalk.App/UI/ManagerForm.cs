@@ -39,6 +39,8 @@ internal sealed class ManagerForm : Form
         clear.Click += (_, _) => _host.ClearPets();
         var feed = new Button { Text = "\u5582\u98df\u5168\u90e8", AutoSize = true };
         feed.Click += (_, _) => _host.FeedAll();
+        var spawnFood = new Button { Text = "\u751f\u6210\u865a\u62df\u98df\u7269", AutoSize = true };
+        spawnFood.Click += (_, _) => _host.SpawnVirtualFood();
         // Keep the established manager command text; the desktop smoke uses
         // the visible label as its real entry-point assertion.
         var refresh = new Button { Text = "\u5237\u65B0\u89D2\u8272", AutoSize = true };
@@ -46,6 +48,7 @@ internal sealed class ManagerForm : Form
         layout.Controls.Add(refresh);
         layout.Controls.Add(clear);
         layout.Controls.Add(feed);
+        layout.Controls.Add(spawnFood);
         layout.Controls.Add(_windowLanding);
         layout.Controls.Add(_hungerEnabled);
         layout.Controls.Add(_dialogueEnabled);

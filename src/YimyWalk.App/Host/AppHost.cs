@@ -7,6 +7,7 @@ using YimyWalk.Core.Display;
 using YimyWalk.Core.Settings;
 using YimyWalk.Core.Simulation;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace YimyWalk.App.Host;
 
@@ -24,6 +25,8 @@ internal sealed class AppHost : ApplicationContext
     private readonly TrayIconHost _tray;
     private readonly DialogueScheduler _dialogue = new();
     private readonly Dictionary<Guid, BubbleWindow> _bubbleWindows = new();
+    private readonly VirtualFoodSystem _virtualFood = new();
+    private readonly Dictionary<Guid, FoodWindow> _foodWindows = new();
     private readonly HashSet<string> _registeredDefinitionIds = new(StringComparer.OrdinalIgnoreCase);
     private SettingsDocument _settings = SettingsDocument.Defaults;
     private SettingsLoadResult _settingsLoad = new(SettingsDocument.Defaults, UsedDefaults: true, UsedBackup: false, null);
@@ -95,6 +98,7 @@ internal sealed class AppHost : ApplicationContext
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _surface.WindowSurfaceCandidates;
     public int CachedSurfaceCount => _surfaceCache.Count;
     public int DialogueBubbleCount => _dialogue.Active.Count;
+    public int VirtualFoodCount => _virtualFood.Targets.Count;
     public bool DialogueEnabled
     {
         get => _settings.DialogueEnabled;
@@ -158,6 +162,14 @@ internal sealed class AppHost : ApplicationContext
     {
         _batch.Cancel();
         _session.Clear();
+        ClearVirtualFood();
+    }
+
+    private void ClearVirtualFood()
+    {
+        _virtualFood.Clear();
+        foreach (var foodWindow in _foodWindows.Values) foodWindow.Dispose();
+        _foodWindows.Clear();
     }
 
     public int FeedAll()
@@ -166,6 +178,12 @@ internal sealed class AppHost : ApplicationContext
         foreach (var instance in _session.Instances.Where(instance => instance.State == PetState.Eat))
             PublishDialogue(instance, "ate");
         return fed;
+    }
+
+    public void SpawnVirtualFood()
+    {
+        var area = _surface.SpawnArea;
+        _virtualFood.Spawn(new System.Numerics.Vector2(area.Left + area.Width * 0.5f, area.Bottom));
     }
 
     public void QueueCreate(string id, int count)
@@ -209,6 +227,33 @@ internal sealed class AppHost : ApplicationContext
             : (now - _lastTickTimestamp) / (double)Stopwatch.Frequency;
         _lastTickTimestamp = now;
         _session.Tick(Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds));
+        foreach (var target in _virtualFood.Targets.Where(target => target.State == VirtualFoodState.Available).ToArray())
+        {
+            var pet = _session.Instances
+                .Where(pet => pet.State is PetState.Idle or PetState.Walk)
+                .OrderBy(pet => Vector2.DistanceSquared(pet.FootPosition, target.Position))
+                .FirstOrDefault();
+            if (pet is not null) _virtualFood.TryClaim(pet, target.Id);
+        }
+        _virtualFood.Tick(_session.Instances, delta);
+        var activeFoodIds = _virtualFood.Targets.Select(target => target.Id).ToHashSet();
+        foreach (var stale in _foodWindows.Keys.Where(id => !activeFoodIds.Contains(id)).ToArray())
+        {
+            _foodWindows[stale].Dispose();
+            _foodWindows.Remove(stale);
+        }
+        foreach (var target in _virtualFood.Targets)
+        {
+            if (!_foodWindows.TryGetValue(target.Id, out var foodWindow))
+            {
+                foodWindow = new FoodWindow(Point.Empty);
+                _foodWindows[target.Id] = foodWindow;
+                foodWindow.Show();
+            }
+            foodWindow.UpdateTarget(
+                new Point((int)Math.Round(target.Position.X - 10), (int)Math.Round(target.Position.Y - 10)),
+                target.VisibleScale);
+        }
         _dialogueClock += Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds);
         _dialogue.Advance(_dialogueClock);
         foreach (var expired in _bubbleWindows.Keys.Where(id => !_dialogue.Active.Any(bubble => bubble.Id == id)).ToArray())
@@ -317,6 +362,7 @@ internal sealed class AppHost : ApplicationContext
             _timer.Dispose();
             _batch.Dispose();
             ClearDialogues();
+            ClearVirtualFood();
             _tray.Dispose();
             _manager.Dispose();
             _session.Dispose();
