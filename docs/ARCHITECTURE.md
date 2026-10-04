@@ -46,3 +46,5 @@ M1 已选择并实现上游已验证的“一个宠物实例对应一个透明�
 The manager's “允许宠物落到可见窗口顶部” checkbox is the user entry point. It is off by default, persisted in validated settings, and can be changed without restarting the host. Closing the manager hides it and cancels the close so the tray can reopen the same subscribed form; host exit disposes it.
 
 M3.1 adds `Hunger`, `Boredom`, and the short `Eat` state to each `PetInstance`. `CharacterDefaults.HungerIncreasePerMinute` is immutable role data; the mutable values stay on the instance. `PetEngine` applies bounded need deltas with a session-level enable/rate setting, and `FeedAll` is exposed by the manager without adding any desktop API to Core. Feeding is rejected while dragging, jumping, falling, or already eating, so movement/input priority remains explicit.
+
+M3.2 keeps dialogue admission in Core's `DialogueScheduler`: it owns only pet IDs, bounded text, expiry, per-pet cooldown, and a global visible limit. `BubbleWindow` is an App-only, no-activate, hit-transparent WinForms surface positioned above the pet; it is disposed on expiry, pet removal, clear, dialogue disable, and host exit. Core never holds a Form or drawing resource.

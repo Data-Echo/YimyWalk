@@ -29,6 +29,8 @@ try
     LogDisplays(host);
     Invoke(hostType, host, "CreateMany", "cat", 1);
     Pump(100);
+    Require((int)Property(host, "DialogueBubbleCount") > 0, "created pet shows a dialogue bubble");
+    Console.WriteLine("DIALOGUE CREATED_BUBBLE=PASS");
     probe.Activate();
     Pump(50);
     Console.WriteLine($"FOCUS SETUP={Native.GetForegroundWindow()} PROBE={probe.Handle}");
@@ -195,6 +197,15 @@ try
     Pump(50);
     Require((bool)Property(host, "HungerEnabled"), "hunger toggle enables growth");
     Console.WriteLine("MANAGER HUNGER_TOGGLE=PASS");
+    var dialogueToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用自动气泡");
+    Require(dialogueToggle is not null, "manager exposes dialogue toggle");
+    dialogueToggle!.Checked = false;
+    Pump(50);
+    Require(!(bool)Property(host, "DialogueEnabled"), "dialogue toggle disables bubbles");
+    dialogueToggle.Checked = true;
+    Pump(50);
+    Require((bool)Property(host, "DialogueEnabled"), "dialogue toggle enables bubbles");
+    Console.WriteLine("MANAGER DIALOGUE_TOGGLE=PASS");
     var feedButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "喂食全部");
     Require(feedButton is not null, "manager exposes feed-all entry");
     Invoke(hostType, host, "CreateMany", "cat", 1);

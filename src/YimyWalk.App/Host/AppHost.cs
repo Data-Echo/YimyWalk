@@ -22,11 +22,14 @@ internal sealed class AppHost : ApplicationContext
     private readonly BatchCreationQueue _batch;
     private readonly ManagerForm _manager;
     private readonly TrayIconHost _tray;
+    private readonly DialogueScheduler _dialogue = new();
+    private readonly Dictionary<Guid, BubbleWindow> _bubbleWindows = new();
     private readonly HashSet<string> _registeredDefinitionIds = new(StringComparer.OrdinalIgnoreCase);
     private SettingsDocument _settings = SettingsDocument.Defaults;
     private SettingsLoadResult _settingsLoad = new(SettingsDocument.Defaults, UsedDefaults: true, UsedBackup: false, null);
     private bool _disposed;
     private long _lastTickTimestamp;
+    private double _dialogueClock;
     internal bool IsExiting { get; private set; }
 
     public AppHost()
@@ -91,6 +94,18 @@ internal sealed class AppHost : ApplicationContext
     public bool WindowSurfaceSnapshotValid => _surface.WindowSurfaceSnapshotValid;
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _surface.WindowSurfaceCandidates;
     public int CachedSurfaceCount => _surfaceCache.Count;
+    public int DialogueBubbleCount => _dialogue.Active.Count;
+    public bool DialogueEnabled
+    {
+        get => _settings.DialogueEnabled;
+        set
+        {
+            if (_settings.DialogueEnabled == value) return;
+            _settings = _settings with { DialogueEnabled = value };
+            if (!value) ClearDialogues();
+            if (!_disposed && CharacterRoot.Length > 0) SaveSettings();
+        }
+    }
 
     public void RefreshWindowSurfaces() => _surface.RefreshWindowSurfaces();
 
@@ -115,6 +130,7 @@ internal sealed class AppHost : ApplicationContext
         ApplyDefinitions(definitions);
         _timer.Start();
         _lastTickTimestamp = Stopwatch.GetTimestamp();
+        _dialogueClock = 0;
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         _manager.SetSettingsStatus(GetSettingsStatus());
@@ -144,7 +160,13 @@ internal sealed class AppHost : ApplicationContext
         _session.Clear();
     }
 
-    public int FeedAll() => _session.FeedAll();
+    public int FeedAll()
+    {
+        var fed = _session.FeedAll();
+        foreach (var instance in _session.Instances.Where(instance => instance.State == PetState.Eat))
+            PublishDialogue(instance, "ate");
+        return fed;
+    }
 
     public void QueueCreate(string id, int count)
     {
@@ -187,19 +209,57 @@ internal sealed class AppHost : ApplicationContext
             : (now - _lastTickTimestamp) / (double)Stopwatch.Frequency;
         _lastTickTimestamp = now;
         _session.Tick(Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds));
+        _dialogueClock += Math.Clamp(delta, 0, PetEngine.MaxDeltaSeconds);
+        _dialogue.Advance(_dialogueClock);
+        foreach (var expired in _bubbleWindows.Keys.Where(id => !_dialogue.Active.Any(bubble => bubble.Id == id)).ToArray())
+        {
+            _bubbleWindows[expired].Dispose();
+            _bubbleWindows.Remove(expired);
+        }
         foreach (var window in _windows.Windows) window.RefreshFrame();
+        foreach (var bubble in _dialogue.Active)
+            if (_bubbleWindows.TryGetValue(bubble.Id, out var bubbleWindow)
+                && _windows.TryGet(bubble.PetId, out var petWindow) && petWindow is not null)
+                bubbleWindow.MoveAbove(petWindow.Bounds);
     }
 
     private void OnInstanceAdded(PetInstance instance)
     {
         var window = new PetWindow(instance, _session, _surfaceCache, _settings.Scale);
+        window.Interaction += group => PublishDialogue(instance, group);
         _windows.Add(window);
+        PublishDialogue(instance, "created");
     }
 
     private void OnInstanceRemoved(PetInstance instance)
     {
         _windows.Remove(instance.InstanceId);
+        _dialogue.RemovePet(instance.InstanceId);
+        foreach (var bubbleId in _bubbleWindows.Where(pair => pair.Value is not null && _dialogue.Active.All(bubble => bubble.Id != pair.Key)).Select(pair => pair.Key).ToArray())
+        {
+            _bubbleWindows[bubbleId].Dispose();
+            _bubbleWindows.Remove(bubbleId);
+        }
         _batch.NotifyRemoved();
+    }
+
+    private void PublishDialogue(PetInstance instance, string group)
+    {
+        if (!DialogueEnabled) return;
+        var result = _dialogue.TryPublish(instance, group, _dialogueClock);
+        if (!result.Accepted || result.Bubble is not { } bubble) return;
+        if (!_windows.TryGet(instance.InstanceId, out var petWindow) || petWindow is null) return;
+        var bubbleWindow = new BubbleWindow(bubble.Text, new Point(petWindow.Bounds.Left, Math.Max(0, petWindow.Bounds.Top - 40)));
+        _bubbleWindows[bubble.Id] = bubbleWindow;
+        bubbleWindow.Show();
+        bubbleWindow.MoveAbove(petWindow.Bounds);
+    }
+
+    private void ClearDialogues()
+    {
+        _dialogue.Clear();
+        foreach (var bubble in _bubbleWindows.Values) bubble.Dispose();
+        _bubbleWindows.Clear();
     }
 
     private bool IsHostWindow(IntPtr handle)
@@ -256,6 +316,7 @@ internal sealed class AppHost : ApplicationContext
             _timer.Stop();
             _timer.Dispose();
             _batch.Dispose();
+            ClearDialogues();
             _tray.Dispose();
             _manager.Dispose();
             _session.Dispose();

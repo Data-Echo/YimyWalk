@@ -10,6 +10,8 @@ internal sealed class PetWindowRegistry : IDisposable
     public int Count => _windows.Count;
     public IReadOnlyCollection<PetWindow> Windows => _windows.Values.ToArray();
 
+    public bool TryGet(Guid instanceId, out PetWindow? window) => _windows.TryGetValue(instanceId, out window);
+
     public void Add(PetWindow window)
     {
         if (_windows.TryGetValue(window.Instance.InstanceId, out var previous))

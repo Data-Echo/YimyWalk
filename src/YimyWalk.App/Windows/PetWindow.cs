@@ -18,6 +18,7 @@ internal sealed class PetWindow : Form
     private Point _grabOffset;
     private bool _cacheDefinitionRetained;
     private float _dpiScale = 1f;
+    public event Action<string>? Interaction;
 
     public PetWindow(PetInstance instance, PetSession session, FrameSurfaceCache cache, float globalScale = 1f)
     {
@@ -137,6 +138,7 @@ internal sealed class PetWindow : Form
         _lastCursor = Cursor.Position;
         _lastCursorTime = DateTime.UtcNow;
         _engine.BeginDrag(Instance);
+        Interaction?.Invoke("clicked");
     }
 
     private void HandleMouseMove(object? sender, MouseEventArgs e)
@@ -166,6 +168,7 @@ internal sealed class PetWindow : Form
         _dragging = false;
         Capture = false;
         _engine.ReleaseDrag(Instance, _dragVelocity);
+        Interaction?.Invoke("dragged");
         _dragVelocity = Vector2.Zero;
     }
 

@@ -121,3 +121,13 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 **Windows 桌面已验证**：输入 smoke 真实点击并验证饥饿开关、喂食全部进入 Eat、管理器关闭/重开；批量 smoke 以 slime sprite-only 角色重新完成 1/10/50/100 创建和清空，100 CREATE 约 WS 78,209,024、PRIVATE 23,691,264、HANDLES 350、USER 428、GDI 632，CLEAR 后 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 32。
 
 **范围边界**：气泡限流、虚拟食物目标和外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。
+
+## M3.2 handoff (2026-10-05)
+
+**代码已实现**：Core `DialogueScheduler` 处理角色台词组回退、单宠物冷却、全局同时显示上限、过期和清空；App 的 `BubbleWindow` 使用非激活、工具窗口和 `HTTRANSPARENT`，由宿主随创建/点击/拖拽/喂食事件发布并在宠物删除、清空、关闭气泡或退出时释放。管理器新增“启用自动气泡”开关，默认开启并持久化。
+
+**构建与核心测试通过**：`scripts/build-yimywalk.ps1` 通过；Core 74/74 通过。`DialogueSchedulerTests` 覆盖缺失组回退、冷却、全局上限、过期和清空。
+
+**Windows 桌面已验证**：输入 smoke 真实观察创建气泡，切换自动气泡开关，且透明区域/实体命中、拖拽、焦点、托盘和管理器生命周期仍通过；批量 smoke 在加入气泡后重新完成 1/10/50/100 创建/清空。100 只 CREATE 约 WS 79,818,752、PRIVATE 24,182,784、HANDLES 350、USER 443、GDI 651；CLEAR 后 ACTIVE/WINDOWS=0、CACHE=0、USER 29、GDI 33。
+
+**范围边界**：虚拟食物目标和外部应用事件尚未实现；第二显示器/DPI 真实矩阵仍暂缓，不能标记为 Windows 桌面通过。
