@@ -73,6 +73,20 @@ public sealed class SurfaceSelectionTests
     }
 
     [Fact]
+    public void RejectsMaximizedSurface()
+    {
+        var candidates = new[]
+        {
+            Candidate("maximized", Floor) with { IsMaximized = true }
+        };
+
+        var selection = SurfaceSelector.Select(candidates, Floor, footLeft: 100, footRight: 160, currentY: 100, nextY: 800);
+
+        Assert.True(selection.IsFallback);
+        Assert.Equal(Floor, selection.Area);
+    }
+
+    [Fact]
     public void DoesNotSelectAWindowWhenTheProjectedFootHasPassedItsHorizontalSpan()
     {
         var candidates = new[]

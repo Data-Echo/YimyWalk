@@ -2,7 +2,8 @@
 param(
     [ValidateRange(1, 20)][int]$Rounds = 1,
     [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$Role = 'cat',
-    [switch]$Landing
+    [switch]$Landing,
+    [switch]$Targeted
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +15,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "DesktopSmoke build failed: $LASTEXITCODE" }
     $smokeArgs = @($Rounds, $Role)
     if ($Landing) { $smokeArgs += 'landing' }
+    if ($Targeted) { $smokeArgs += 'targeted' }
     & (Join-Path $root 'tools\DesktopSmoke\bin\x64\Release\net8.0-windows\DesktopSmoke.exe') @smokeArgs
     if ($LASTEXITCODE -ne 0) { throw "DesktopSmoke failed: $LASTEXITCODE" }
 }

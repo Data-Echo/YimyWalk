@@ -37,7 +37,7 @@ public sealed class PetPhysicsTests
     }
 
     [Fact]
-    public void WalkingReversesAtWorkingAreaEdges()
+    public void WalkingWrapsAtWorkingAreaEdges()
     {
         var pet = NewPet(new Vector2(2, Area.Bottom));
         pet.StartWalking(FacingDirection.Left);
@@ -45,9 +45,56 @@ public sealed class PetPhysicsTests
 
         engine.Tick(pet, 0.1);
 
-        Assert.Equal(Area.Left, pet.FootPosition.X, 3);
+        Assert.Equal(Area.Right - 4, pet.FootPosition.X, 3);
+        Assert.Equal(FacingDirection.Left, pet.Facing);
+        Assert.Equal(FrameKind.WalkLeft, pet.GetFrameKind());
+    }
+
+    [Fact]
+    public void WalkingWrapsFromGlobalRightEdgeToGlobalLeftEdge()
+    {
+        var area = new WorldRect(0, 0, 100, 100);
+        var pet = NewPet(new Vector2(98, area.Bottom));
+        pet.StartWalking(FacingDirection.Right);
+        var engine = new PetEngine(new TestSurface(area), new FixedRandom());
+
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(4, pet.FootPosition.X, 3);
         Assert.Equal(FacingDirection.Right, pet.Facing);
-        Assert.Equal(FrameKind.WalkRight, pet.GetFrameKind());
+        Assert.Equal(PetState.Walk, pet.State);
+    }
+
+    [Fact]
+    public void WalkingWrapsFromGlobalLeftEdgeToGlobalRightEdge()
+    {
+        var area = new WorldRect(0, 0, 100, 100);
+        var pet = NewPet(new Vector2(2, area.Bottom));
+        pet.StartWalking(FacingDirection.Left);
+        var engine = new PetEngine(new TestSurface(area), new FixedRandom());
+
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(96, pet.FootPosition.X, 3);
+        Assert.Equal(FacingDirection.Left, pet.Facing);
+        Assert.Equal(PetState.Walk, pet.State);
+    }
+
+    [Fact]
+    public void WalkingCanCrossTheGapBetweenDisplayWorkingAreas()
+    {
+        var left = new DisplayInfo(new DisplayId("LEFT"), new WorldRect(0, 0, 100, 100), new WorldRect(0, 0, 100, 100), 1f, true);
+        var right = new DisplayInfo(new DisplayId("RIGHT"), new WorldRect(200, 0, 300, 100), new WorldRect(200, 0, 300, 100), 1f, false);
+        var surface = new MultiDisplaySurface(new DisplaySnapshot(new[] { left, right }));
+        var pet = NewPet(new Vector2(98, 100));
+        pet.StartWalking(FacingDirection.Right);
+        var engine = new PetEngine(surface, new FixedRandom());
+
+        for (var i = 0; i < 20; i++) engine.Tick(pet, 0.1);
+
+        Assert.True(pet.FootPosition.X >= right.WorkingArea.Left);
+        Assert.Equal(FacingDirection.Right, pet.Facing);
+        Assert.Equal(PetState.Walk, pet.State);
     }
 
     [Fact]
@@ -197,6 +244,13 @@ public sealed class PetPhysicsTests
     {
         public WorldRect WorkingArea { get; set; } = area;
         public bool IsValid { get; set; } = true;
+    }
+
+    private sealed class MultiDisplaySurface(DisplaySnapshot snapshot) : IWorldSurface
+    {
+        public WorldRect WorkingArea => new(0, 0, 300, 100);
+        public bool IsValid => true;
+        public IDisplayProvider DisplayProvider { get; } = snapshot;
     }
 
     private sealed class ProjectedSurface(WorldRect area) : IWorldSurface

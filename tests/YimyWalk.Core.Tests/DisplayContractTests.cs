@@ -75,6 +75,19 @@ public sealed class DisplayContractTests
         Assert.Equal(Left.WorkingArea.Top - 32, pet.FootPosition.Y);
     }
 
+    [Fact]
+    public void ExposesGlobalHorizontalTravelBoundsAcrossDisplays()
+    {
+        var displays = new DisplaySnapshot(new[] { Left, Right });
+        var property = typeof(DisplaySnapshot).GetProperty("HorizontalTravelBounds");
+
+        Assert.NotNull(property);
+        var bounds = (WorldRect)property!.GetValue(displays)!;
+
+        Assert.Equal(Left.WorkingArea.Left, bounds.Left);
+        Assert.Equal(Right.WorkingArea.Right, bounds.Right);
+    }
+
     private sealed class DisplaySurface(IDisplayProvider displays, WorldRect fallback, WorldRect? spawn = null) : IWorldSurface
     {
         public WorldRect WorkingArea { get; } = fallback;

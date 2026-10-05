@@ -86,6 +86,7 @@ internal sealed class WindowSurfaceResolver : IDisposable
                     && (ExcludeWindow is null || ExcludeWindow(window));
                 var unsafeSurface = IsUnsafeSurfaceClass(className);
                 var isBackgroundShell = className is "Progman" or "WorkerW";
+                var isMaximized = IsMaximizedSurface(window, rectangle);
                 var id = window.ToInt64().ToString("X", CultureInfo.InvariantCulture);
                 candidates.Add(new WindowSurfaceCandidate(
                     id,
@@ -96,7 +97,8 @@ internal sealed class WindowSurfaceResolver : IDisposable
                     IsStale: false,
                     IsOccluded: false,
                     ZOrder: zOrder++,
-                    IsOcclusionBlocker: !hostExcluded && !isBackgroundShell && !tooSmall));
+                    IsOcclusionBlocker: !hostExcluded && !isBackgroundShell && !tooSmall,
+                    IsMaximized: isMaximized));
                 return true;
             }, IntPtr.Zero);
             if (!enumerationSucceeded)
@@ -178,4 +180,18 @@ internal sealed class WindowSurfaceResolver : IDisposable
             or "EdgeUiInputTopWndClass"
             or "DummyDWMListenerWindow"
             or "Windows.UI.Core.CoreWindow";
+
+    private bool IsMaximizedSurface(IntPtr window, NativeMethods.Rect rectangle)
+    {
+        if (NativeMethods.IsZoomed(window)) return true;
+
+        var center = new Vector2(
+            rectangle.Left + (rectangle.Right - rectangle.Left) / 2f,
+            rectangle.Top + (rectangle.Bottom - rectangle.Top) / 2f);
+        var workingArea = _fallback(center);
+        return rectangle.Left <= workingArea.Left
+            && rectangle.Top <= workingArea.Top
+            && rectangle.Right >= workingArea.Right
+            && rectangle.Bottom >= workingArea.Bottom;
+    }
 }

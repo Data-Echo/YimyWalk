@@ -1,4 +1,4 @@
-# YimyWalk v0.1.3
+# YimyWalk v0.1.4
 
 ## Included
 
@@ -7,6 +7,7 @@
 - Dragging, throwing, movement, falling, optional window-top landing, hunger, dialogue bubbles, virtual food, and opt-in foreground feedback.
 - Startup diagnostics for missing runtimes, incomplete packages, and invalid role directories.
 - Application icon derived from `icon_yimy.png`, normalized to 512×512 and packaged as a multi-size Windows icon. The same embedded icon is used by the executable, manager taskbar window, and notification-area tray icon.
+- Pets can walk across horizontally arranged displays and wrap from the global virtual-desktop edge to the opposite edge; maximized windows are excluded from window-top landing.
 - Release entry is the self-contained single-file `YimyWalk.exe`; double-clicking it starts the app without a separate .NET runtime installation.
 
 ## Requirements and boundaries

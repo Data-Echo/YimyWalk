@@ -57,9 +57,23 @@ public sealed class DisplaySnapshot : IDisplayProvider
         }
 
         _displays = new ReadOnlyCollection<DisplayInfo>(unique);
+        if (unique.Count > 0)
+        {
+            var left = unique.Min(display => display.WorkingArea.Left);
+            var top = unique.Min(display => display.WorkingArea.Top);
+            var right = unique.Max(display => display.WorkingArea.Right);
+            var bottom = unique.Max(display => display.WorkingArea.Bottom);
+            HorizontalTravelBounds = new WorldRect(left, top, right, bottom);
+        }
     }
 
     public IReadOnlyList<DisplayInfo> Displays => _displays;
+
+    /// <summary>
+    /// Bounding horizontal span of all valid display working areas. The span
+    /// intentionally includes coordinate gaps so walking can cross displays.
+    /// </summary>
+    public WorldRect? HorizontalTravelBounds { get; }
 
     public DisplayInfo? Primary
     {

@@ -82,7 +82,7 @@ public sealed class PetEngine
                 IntegrateAirborne(pet, area, delta);
                 break;
             case PetState.Walk:
-                IntegrateWalking(pet, area, delta);
+                IntegrateWalking(pet, area, Surface.HorizontalTravelBounds, delta);
                 break;
             case PetState.Idle:
                 pet.Velocity = Vector2.Zero;
@@ -131,20 +131,19 @@ public sealed class PetEngine
         pet.StateTime = 0;
     }
 
-    private static void IntegrateWalking(PetInstance pet, WorldRect area, float delta)
+    private static void IntegrateWalking(PetInstance pet, WorldRect area, WorldRect travelBounds, float delta)
     {
         var speed = Math.Clamp(pet.Definition.Movement.WalkSpeed, 0, 1000);
         var x = pet.FootPosition.X + (int)pet.Facing * speed * delta;
-        if (x <= area.Left)
+        var width = travelBounds.Right - travelBounds.Left;
+        if (width > 0)
         {
-            x = area.Left;
-            pet.Facing = FacingDirection.Right;
+            while (x < travelBounds.Left) x += width;
+            while (x > travelBounds.Right) x -= width;
         }
-        else if (x >= area.Right)
-        {
-            x = area.Right;
-            pet.Facing = FacingDirection.Left;
-        }
+        else
+            x = Math.Clamp(x, area.Left, area.Right);
+
         pet.FootPosition = new Vector2(x, area.Bottom);
         pet.Velocity = new Vector2((int)pet.Facing * speed, 0);
     }

@@ -5,7 +5,8 @@ using System.Windows.Forms;
 
 var rounds = args.Length == 0 ? 1 : int.TryParse(args[0], out var parsed) && parsed > 0 && parsed <= 20 ? parsed : throw new ArgumentException("Rounds must be between 1 and 20.");
 var role = args.Length < 2 ? "cat" : args[1];
-var landingRequested = args.Length >= 3 && args[2].Equals("landing", StringComparison.OrdinalIgnoreCase);
+var landingRequested = args.Any(arg => arg.Equals("landing", StringComparison.OrdinalIgnoreCase));
+var targetedRequested = args.Any(arg => arg.Equals("targeted", StringComparison.OrdinalIgnoreCase));
 var appAssemblyCandidates = new[]
 {
     Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/YimyWalk.App.dll"),
@@ -78,6 +79,91 @@ foreach (var display in displayValues)
     Console.WriteLine($"DISPLAY ID={id} BOUNDS={bounds} WORKING={workingArea} SCALE={scale} PRIMARY={primary}");
 }
 
+var refreshWindowSurfaces = type.GetMethod("RefreshWindowSurfaces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+    ?? throw new MissingMethodException(type.FullName, "RefreshWindowSurfaces");
+if (targetedRequested)
+{
+    using (var maximizedProbe = new Form
+    {
+        FormBorderStyle = FormBorderStyle.None,
+        ShowInTaskbar = false,
+        WindowState = FormWindowState.Maximized,
+        BackColor = Color.CornflowerBlue,
+        Text = "YimyWalk maximized landing probe"
+    })
+    {
+        maximizedProbe.Show();
+        Application.DoEvents();
+        refreshWindowSurfaces.Invoke(host, Array.Empty<object>());
+        var candidates = ((System.Collections.IEnumerable)type.GetProperty("WindowSurfaceCandidates")!.GetValue(host)!)
+            .Cast<object>()
+            .ToArray();
+        var probeId = maximizedProbe.Handle.ToInt64().ToString("X");
+        var probeCandidate = candidates.SingleOrDefault(candidate =>
+            string.Equals(Property(candidate, "Id").ToString(), probeId, StringComparison.OrdinalIgnoreCase));
+        if (probeCandidate is null)
+            throw new InvalidOperationException("maximized probe was not enumerated as a surface candidate");
+        if (!(bool)Property(probeCandidate, "IsMaximized"))
+            throw new InvalidOperationException("maximized probe was not marked as maximized");
+        Console.WriteLine("MAXIMIZED WINDOW SURFACE=REJECTED PASS");
+
+    }
+
+    refreshWindowSurfaces.Invoke(host, Array.Empty<object>());
+    var displayAreas = displayValues.Select(display =>
+    {
+        var area = Property(display, "WorkingArea");
+        return new
+        {
+            Area = area,
+            Left = Convert.ToSingle(Property(area, "Left")),
+            Right = Convert.ToSingle(Property(area, "Right")),
+            Top = Convert.ToSingle(Property(area, "Top")),
+            Bottom = Convert.ToSingle(Property(area, "Bottom"))
+        };
+    }).ToArray();
+    var horizontalPair = displayAreas
+        .SelectMany(source => displayAreas
+            .Where(target => target.Left > source.Right)
+            .Select(target => new { Source = source, Target = target }))
+        .OrderBy(pair => pair.Target.Left - pair.Source.Right)
+        .FirstOrDefault();
+    if (horizontalPair is null)
+    {
+        Console.WriteLine("CROSS-DISPLAY WALK=SKIP NO_HORIZONTALLY_ORDERED_DISPLAY_PAIR");
+    }
+    else
+    {
+        var createAt = session.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Single(method => method.Name == "Create" && method.GetParameters().Length == 2);
+        var crossPet = createAt.Invoke(session, new object[]
+        {
+            "cat",
+            new Vector2(horizontalPair.Source.Right - 1, horizontalPair.Source.Bottom)
+        })!;
+        var startWalking = crossPet.GetType().GetMethod("StartWalking")!;
+        var direction = Enum.Parse(startWalking.GetParameters()[0].ParameterType, "Right");
+        startWalking.Invoke(crossPet, new[] { direction });
+        var reachedTarget = false;
+        for (var tick = 0; tick < 2000; tick++)
+        {
+            session.GetType().GetMethod("Tick")!.Invoke(session, new object[] { 0.1d });
+            var position = Property(crossPet, "FootPosition");
+            var x = (float)position.GetType().GetField("X")!.GetValue(position)!;
+            if (x >= horizontalPair.Target.Left && x <= horizontalPair.Target.Right)
+            {
+                reachedTarget = true;
+                break;
+            }
+        }
+        var crossInstanceId = (Guid)Property(crossPet, "InstanceId");
+        session.GetType().GetMethod("Remove")!.Invoke(session, new object[] { crossInstanceId });
+        if (!reachedTarget)
+            throw new InvalidOperationException("pet did not walk from the first display into the second display");
+        Console.WriteLine($"CROSS-DISPLAY WALK SOURCE_RIGHT={horizontalPair.Source.Right:0} TARGET_LEFT={horizontalPair.Target.Left:0} PASS");
+    }
+}
+
 if (landingRequested)
 {
     using var landingProbe = new Form
@@ -92,8 +178,6 @@ if (landingRequested)
     landingProbe.Show();
     Application.DoEvents();
     type.GetProperty("WindowLandingEnabled")!.SetValue(host, true);
-    var refreshWindowSurfaces = type.GetMethod("RefreshWindowSurfaces", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-        ?? throw new MissingMethodException(type.FullName, "RefreshWindowSurfaces");
     refreshWindowSurfaces.Invoke(host, Array.Empty<object>());
     var createAt = session.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
         .Single(method => method.Name == "Create" && method.GetParameters().Length == 2);

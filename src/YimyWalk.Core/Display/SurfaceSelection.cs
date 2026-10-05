@@ -11,7 +11,8 @@ public readonly record struct WindowSurfaceCandidate(
     bool IsStale,
     bool IsOccluded = false,
     int ZOrder = int.MaxValue,
-    bool IsOcclusionBlocker = true)
+    bool IsOcclusionBlocker = true,
+    bool IsMaximized = false)
 {
     public bool IsValid
         => !string.IsNullOrWhiteSpace(Id)
@@ -41,7 +42,7 @@ public static class SurfaceSelector
         {
             foreach (var candidate in candidates)
             {
-                if (!candidate.IsValid || !candidate.IsVisible || candidate.IsMinimized || candidate.IsExcluded || candidate.IsStale || candidate.IsOccluded)
+                if (!candidate.IsValid || !candidate.IsVisible || candidate.IsMinimized || candidate.IsExcluded || candidate.IsStale || candidate.IsOccluded || candidate.IsMaximized)
                     continue;
                 if (candidate.Bounds.Right <= footLeft || candidate.Bounds.Left >= footRight)
                     continue;
