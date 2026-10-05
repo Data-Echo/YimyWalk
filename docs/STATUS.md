@@ -7,6 +7,7 @@
 - **Core 测试通过**：完整 Core 测试 **89/89** 通过；图标回归断言位于 `tools/DesktopSmoke`，不把 WinForms 依赖引入 Core。
 - **Windows 桌面已验证**：可见桌面 smoke 已确认嵌入资源存在，管理窗口和托盘图标逐像素匹配同一资源；发布 EXE 直接启动保持运行通过，已有创建/清空、角色刷新和资源释放检查继续通过。
 - **Windows 桌面未验证**：本次没有重复双显示器 83/83 矩阵；任务栏通知区域的肉眼截图、负坐标显示器、物理拔插、睡眠唤醒、更长时间资源趋势和权限受限会话仍按原边界标记未验证。输入 smoke 因当前用户已有 `dialogueEnabled=false` 在气泡前置断言处失败，未修改用户设置，也未计为通过。
+- **远程与归档**：`codex/bootstrap` 修复提交为 `bc130d5`，`main` 发布提交为 `0c9f106`，均已推送；`v0.1.3` 标签已推送。发布压缩包和 `SHA256SUMS.txt` 位于 `D:/Project/Cursor/YimyWalk-main/artifacts/release/v0.1.3/`。
 
 ## 发布分支与 v0.1.2（2026-10-05）
 
