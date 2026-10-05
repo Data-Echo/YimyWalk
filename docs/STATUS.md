@@ -7,7 +7,7 @@
 - **构建通过**：`scripts/build-yimywalk.ps1 -Version 0.1.5` 通过，生成 self-contained single-file `YimyWalk.exe`；关闭 .NET 单文件压缩以保证重复 publish 的可复现字节；两次 clean publish 的 `YimyWalk.exe` 哈希一致，`scripts/test-release-package.ps1 -Version 0.1.5` 通过（12 个文件、11 个 SHA-256 校验项）。
 - **Windows 桌面已验证**：`scripts/desktop-smoke.ps1 -Targeted -Rounds 1 -Role cat` 在当前真实双显示器拓扑通过；最大化窗口过滤、跨屏行走和新增 `CROSS-DISPLAY TOSS ... PASS` 均通过，随后角色刷新及 1/10/50/100 创建/清空、资源回落也通过。
 - **Windows 桌面未验证**：本轮未重复 83/83 双屏矩阵；负坐标布局、物理拔插、睡眠唤醒、长期 CPU/内存/句柄趋势、权限受限会话及真实任务栏配置变化仍未验证。`desktop-input-smoke.ps1` 本轮因当前用户设置使气泡关闭，在“created pet shows a dialogue bubble”处提前退出，不能作为本功能通过证据。
-- **发布状态**：`codex/bootstrap` 实现与发布脚本已提交并推送；`main` 已生成精简产品树、v0.1.5 标签和源码/Windows x64 归档，待远程同步。应用继续不联网、不自启动、不请求管理员权限、不修改真实桌面文件。
+- **发布状态**：`codex/bootstrap` 实现与发布脚本已推送（最新提交 `e4eb848`）；精简 `main` 提交 `f378757` 和 `v0.1.5` 标签已推送。源码/Windows x64 归档和 `SHA256SUMS.txt` 位于 `D:/Project/Cursor/YimyWalk-main/artifacts/release/v0.1.5/`。应用继续不联网、不自启动、不请求管理员权限、不修改真实桌面文件。
 
 # 当前状态（2026-10-05，v0.1.4 EXE 发布包）
 
