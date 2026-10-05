@@ -12,7 +12,7 @@ YimyWalk 是一个离线运行的 Windows x64 桌面 2D 宠物引擎。把符合
 Characters/<id>/sprite.png
 ```
 
-角色格式、可选配置和对白见 [`docs/CHARACTER_FORMAT.md`](docs/CHARACTER_FORMAT.md)。默认包包含 `cat` 和 `slime`。
+角色格式、可选配置和对白见 [`docs/CHARACTER_FORMAT.md`](docs/CHARACTER_FORMAT.md)。如果使用 GPT Image 等工具创作角色，见根目录的 [`AI_CHARACTER_PROMPT_GUIDE.md`](AI_CHARACTER_PROMPT_GUIDE.md)。默认包包含 `cat` 和 `slime`。
 
 ## 安全边界
 
