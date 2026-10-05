@@ -8,6 +8,16 @@
 
 **Tech Stack:** .NET 8, C# WinForms, YimyWalk.Core, xUnit, PowerShell smoke scripts, existing FrameSurfaceCache and desktop adapters.
 
+## 当前执行记录（2026-10-05）
+
+- Task 1–2：已实现并提交；Core 行为覆盖和 AppHost 保存门面已通过 101 项 Core 测试及设置契约 smoke。
+- Task 3：已实现普通任务栏主窗体、200px 侧栏、五页缓存、启动总览、关闭转最小化和显式退出。
+- Task 4–5：已实现实例列表的 InstanceId 选择、三态/数值覆盖、idle1/index 0 预览、角色显式设为下次创建、互动全局默认、设置缩放/显示器和真实保存状态。
+- Task 6：本轮以现有 WinForms DPI 布局和增量列表实现完成最小回归；更长时间资源曲线、负坐标显示器、系统结束会话和物理拔插仍需独立桌面回归。
+- 设置页不显示 `WarningLimit`：该字段继续由 `SettingsDocument` 校验并保留兼容性，但当前没有对应运行时警告行为，避免提供无效控件。
+
+每个任务的完成证据仍按代码实现、构建通过、逻辑测试通过和 Windows 桌面验证分别记录；`desktop-input-smoke.ps1` 若遇到桌面遮罩阻塞透明穿透，会返回未验证状态，不以 Core 测试替代。
+
 ---
 
 ## 范围和执行顺序
@@ -256,7 +266,7 @@ Expected: 覆盖测试通过；真实桌面可选中实例并看到 idle1，刷�
 
 - [ ] **Step 1: 增加页面真实绑定的失败断言**
 
-断言总览分别显示 ActiveCount 和 Batch.PendingCount；角色页的选择只改变 SelectedRoleId（下次创建默认角色），不会改变当前运行实例选择；互动页的默认气泡、全局气泡 gate、应用切换反馈、默认走动和活跃度分别显示来源/限制语义；设置页显示保存状态。
+断言总览分别显示 ActiveCount 和 Batch.PendingCount；角色页只有点击“设为下次创建角色”才改变 SelectedRoleId（下次创建默认角色），浏览/预览不会改变当前运行实例选择；互动页的默认气泡、全局气泡 gate、应用切换反馈、默认走动和活跃度分别显示来源/限制语义；设置页显示保存状态。
 
 - [ ] **Step 2: 实现总览**
 
@@ -270,7 +280,7 @@ Expected: 覆盖测试通过；真实桌面可选中实例并看到 idle1，刷�
 
 互动页只显示存在真实业务闭环的控件：默认主动走动、全局活跃度倍率、默认自动气泡、全局允许自动气泡、应用切换反馈、饥饿增长及已有虚拟食物入口。没有新增独立静音/勿扰字段就不显示静音/勿扰控件。
 
-设置页绑定 Scale、WindowLandingEnabled、PreferredDisplayId、WarningLimit 和保存/恢复诊断。连续数值使用 SettingsSaveCoordinator 合并写入。每个修改显示已应用、保存中、已保存或保存失败。
+设置页绑定 Scale、WindowLandingEnabled、PreferredDisplayId 和保存/恢复诊断。`WarningLimit` 没有真实运行时行为时只保留在校验文档，不渲染为无效控件。连续数值使用 SettingsSaveCoordinator 合并写入。每个修改显示已应用、保存中、已保存或保存失败。
 
 - [ ] **Step 5: 运行 UI smoke**
 

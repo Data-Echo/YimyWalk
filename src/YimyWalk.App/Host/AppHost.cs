@@ -48,8 +48,6 @@ internal sealed class AppHost : ApplicationContext
         _timer = new System.Windows.Forms.Timer { Interval = 16 };
         _timer.Tick += (_, _) => Tick();
         _settingsSave = new SettingsSaveCoordinator(SaveSettingsCore);
-        MainForm = new Form { ShowInTaskbar = false, Opacity = 0, Width = 1, Height = 1 };
-        MainForm.Load += (_, _) => MainForm.Hide();
         _batch = new BatchCreationQueue(() =>
         {
             if (!_catalog.TryGet(_settings.SelectedRoleId, out var definition))
@@ -58,6 +56,7 @@ internal sealed class AppHost : ApplicationContext
             return _session.Create(definition.Id);
         });
         _manager = new ManagerForm(this);
+        MainForm = _manager;
         _settingsSave.Changed += OnSettingsSaveChanged;
         _tray = new TrayIconHost(this);
     }
@@ -65,14 +64,31 @@ internal sealed class AppHost : ApplicationContext
     public PetSession Session => _session;
     public PetWindowRegistry Windows => _windows;
     public CharacterCatalog Catalog => _catalog;
+    internal FrameSurfaceCache SurfaceCache => _surfaceCache;
     public string CharacterRoot { get; private set; } = string.Empty;
     public BatchCreationQueue Batch => _batch;
     public SettingsDocument Settings => _settings;
     public SettingsLoadResult SettingsLoad => _settingsLoad;
     public string SelectedRoleId => _settings.SelectedRoleId;
-    public float GlobalScale => _settings.Scale;
+    public float GlobalScale
+    {
+        get => _settings.Scale;
+        set
+        {
+            var bounded = Math.Clamp(value, SettingsDocument.MinScale, SettingsDocument.MaxScale);
+            if (Math.Abs(_settings.Scale - bounded) < 0.0001f) return;
+            _settings = _settings with { Scale = bounded };
+            foreach (var window in _windows.Windows) window.SetGlobalScale(bounded);
+            if (!_disposed && CharacterRoot.Length > 0) SaveSettings(debounce: true);
+        }
+    }
+    public string? PreferredDisplayId => _settings.PreferredDisplayId;
     public SettingsSaveState SettingsSaveState => _settingsSave.State;
     public string? SettingsSaveError => _settingsSave.Error;
+    public int ActivePetCount => _session.ActiveCount;
+    public int PendingCreationCount => _batch.PendingCount;
+    public bool IsPaused => _session.IsPaused;
+    public IReadOnlyCollection<PetInstance> ActivePets => _session.Instances;
     public bool DefaultWalkEnabled
     {
         get => _session.DefaultWalkEnabled;
@@ -172,6 +188,15 @@ internal sealed class AppHost : ApplicationContext
 
     public void RefreshWindowSurfaces() => _surface.RefreshWindowSurfaces();
 
+    public void SetPreferredDisplay(string? displayId)
+    {
+        var normalized = string.IsNullOrWhiteSpace(displayId) ? null : displayId;
+        if (string.Equals(_settings.PreferredDisplayId, normalized, StringComparison.OrdinalIgnoreCase)) return;
+        _surface.SetPreferredDisplay(normalized);
+        _settings = _settings with { PreferredDisplayId = normalized };
+        if (!_disposed && CharacterRoot.Length > 0) SaveSettings();
+    }
+
     public void Start()
     {
         _surface.ExcludeWindow = IsHostWindow;
@@ -199,6 +224,7 @@ internal sealed class AppHost : ApplicationContext
         if (startupDiagnostic is not null)
             throw new StartupFailureException(startupDiagnostic);
         ApplyDefinitions(definitions);
+        EnsureSelectedRole();
         _timer.Start();
         _lastTickTimestamp = Stopwatch.GetTimestamp();
         _dialogueClock = 0;
@@ -206,6 +232,8 @@ internal sealed class AppHost : ApplicationContext
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         _manager.SetSettingsStatus(GetSettingsStatus());
+        _manager.Show();
+        _manager.SelectPage(ManagerPageId.Overview);
     }
 
     public IReadOnlyList<CharacterScanFailure> ReloadCharacters()
@@ -216,6 +244,7 @@ internal sealed class AppHost : ApplicationContext
 
         var definitions = _catalog.Scan(CharacterRoot);
         ApplyDefinitions(definitions);
+        EnsureSelectedRole();
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         return _catalog.LastFailures;
@@ -232,6 +261,32 @@ internal sealed class AppHost : ApplicationContext
         _session.Clear();
         ClearVirtualFood();
     }
+
+    public PetInstance? FindPet(Guid instanceId)
+        => _session.Instances.FirstOrDefault(instance => instance.InstanceId == instanceId);
+
+    public bool RemovePet(Guid instanceId)
+        => _session.Remove(instanceId);
+
+    public bool FeedPet(Guid instanceId)
+    {
+        var pet = FindPet(instanceId);
+        if (pet is null) return false;
+        var fed = pet.Feed();
+        if (fed) PublishDialogue(pet, "ate");
+        return fed;
+    }
+
+    public bool SetPetBehaviorOverrides(Guid instanceId, PetBehaviorOverrides overrides)
+    {
+        var pet = FindPet(instanceId);
+        if (pet is null) return false;
+        pet.BehaviorOverrides = overrides;
+        return true;
+    }
+
+    public bool ResetPetBehaviorOverrides(Guid instanceId)
+        => SetPetBehaviorOverrides(instanceId, PetBehaviorOverrides.Inherit);
 
     private void ClearVirtualFood()
     {
@@ -272,8 +327,11 @@ internal sealed class AppHost : ApplicationContext
 
     public void ShowManager()
     {
+        if (_manager.WindowState == FormWindowState.Minimized)
+            _manager.WindowState = FormWindowState.Normal;
         _manager.Show();
         _manager.BringToFront();
+        _manager.Activate();
     }
 
     public void SetPetsVisible(bool visible)
@@ -284,10 +342,18 @@ internal sealed class AppHost : ApplicationContext
 
     public void ExitApplication()
     {
-        IsExiting = true;
+        MarkExiting();
         _batch.Cancel();
+        _manager.AllowClose();
+        if (!_manager.IsDisposed) _manager.Close();
         ExitThread();
     }
+
+    internal void MarkExiting() => IsExiting = true;
+
+    public void PausePets() => _session.Pause();
+
+    public void ResumePets() => _session.Resume();
 
     private void Tick()
     {
@@ -413,6 +479,15 @@ internal sealed class AppHost : ApplicationContext
         _registeredDefinitionIds.Clear();
         foreach (var id in definitions.Keys)
             _registeredDefinitionIds.Add(id);
+    }
+
+    private void EnsureSelectedRole()
+    {
+        if (_catalog.TryGet(_settings.SelectedRoleId, out _)) return;
+        var fallback = _catalog.Definitions.Values.OrderBy(definition => definition.Id).FirstOrDefault();
+        if (fallback is null) return;
+        _settings = _settings with { SelectedRoleId = fallback.Id };
+        SaveSettings();
     }
 
     private string GetSettingsStatus()

@@ -18,6 +18,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-yimywalk.ps1
 
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-input-smoke.ps1` 会在真实 Windows 窗口上执行掉落、行走、跳跃、透明/实体命中、鼠标拖拽、释放抛掷、捕获丢失、焦点和托盘生命周期检查。它会先打印生产窗口自身的 `WM_NCHITTEST` 结果；若当前会话由 `LockScreenBackstopFrame` 等安全桌面窗口截获 `WindowFromPoint`，会输出 `RESULT UNVERIFIED INPUT_ROUTING_BLOCKED`，保留未验证状态而不把环境阻塞当作功能通过。
 
+同一个输入 smoke 还检查 M4 主菜单：普通任务栏窗口、五页导航、关闭转最小化和恢复、桌宠实例列表、稳定实例选择、idle1/index 0 单帧预览、单实例覆盖、全局互动控件、设置保存入口、托盘清空队列和显式退出。它不会把关闭主菜单误判为退出；真正退出必须看到托盘和宿主资源释放。若透明穿透被当前桌面遮罩阻塞，输出仍会保留壳体和业务检查结果，但最终状态必须按 `Windows 桌面未验证` 记录。
+
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-display-smoke.ps1 -Rounds 3` 要求可见且已解锁的 Windows 桌面至少有两块扩展显示器。它使用生产启动入口、PerMonitorV2、真实分层宠物窗口和真实鼠标，在每块显示器上检查显示器 bounds/工作区/DPI、cat/slime 的生成和落地、行走/跳跃、透明区域穿透、实体命中、拖拽释放、全局缩放，以及两个方向的跨屏拖拽；随后在同一宿主进程中重复创建和清空并记录 CPU、工作集、私有字节、句柄、USER/GDI。`-Rounds` 可设为 1–100，`-InventoryOnly` 只记录当前显示器元数据。该 smoke 不会改变显示器配置、关闭或移动现有用户窗口；物理拔插、睡眠/唤醒、任务栏布局变化和负坐标拓扑必须另行执行，未执行时仍标记为未验证。
 
 当前核心测试覆盖：3×3 切帧和 0—8 协议、左向镜像、默认脚底锚点、sprite-only 默认值、坏 PNG/透明图/越界图、受限 delta、坠落和落地、行走边界、跳跃 apex、拖拽和抛掷、实例状态隔离、1/10/50/100 创建与清空、失败刷新保留旧定义、共享资源引用计数和幂等释放，以及 hunger/boredom 独立数值、配置增长率、人工喂食边界、饥饿开关、台词限流和虚拟食物认领/消费/超时。

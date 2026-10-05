@@ -21,6 +21,28 @@ public sealed class PetBehaviorOverrideTests
     }
 
     [Fact]
+    public void ChangingGlobalWalkDefaultOnlyChangesInheritedInstances()
+    {
+        var inherited = PetBehaviorOverrides.Inherit;
+        var forcedOn = new PetBehaviorOverrides(WalkOverride: BooleanOverride.Enabled);
+        var forcedOff = new PetBehaviorOverrides(WalkOverride: BooleanOverride.Disabled);
+
+        Assert.True(inherited.ResolveWalkEnabled(true));
+        Assert.False(inherited.ResolveWalkEnabled(false));
+        Assert.True(forcedOn.ResolveWalkEnabled(false));
+        Assert.False(forcedOff.ResolveWalkEnabled(true));
+    }
+
+    [Fact]
+    public void ResettingActivityOverrideReturnsToTheGlobalValue()
+    {
+        var custom = new PetBehaviorOverrides(ActivityRateOverride: 0.6f);
+
+        Assert.Equal(0.6f, custom.ResolveActivityRate(1.8f));
+        Assert.Equal(1.8f, (custom with { ActivityRateOverride = null }).ResolveActivityRate(1.8f));
+    }
+
+    [Fact]
     public void DisabledWalkingDoesNotDisableGravityOrDragging()
     {
         var pet = new PetInstance(TestSpriteFactory.LoadSpriteOnly("override"), new Vector2(100, 720))

@@ -9,7 +9,7 @@ internal sealed class PetWindow : Form
     private readonly PetEngine _engine;
     private readonly FrameSurfaceCache _cache;
     private readonly Host.DesktopWorldSurface? _desktopSurface;
-    private readonly float _globalScale;
+    private float _globalScale;
     private RenderedSurface? _surface;
     private bool _dragging;
     private Point _lastCursor;
@@ -48,6 +48,12 @@ internal sealed class PetWindow : Form
     }
 
     public PetInstance Instance { get; }
+
+    public void SetGlobalScale(float scale)
+    {
+        _globalScale = Math.Clamp(scale, 0.1f, 8f);
+        RefreshFrame();
+    }
 
     protected override void Dispose(bool disposing)
     {

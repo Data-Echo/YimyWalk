@@ -1,3 +1,17 @@
+# 当前状态（2026-10-05，M4 UI shell 最小切片）
+
+## M4 UI shell 最小切片（2026-10-05）
+
+- **代码已实现**：`ManagerForm` 已改为普通 WinForms 任务栏主窗口（默认 1120×720、最小 900×580、200px 侧栏、DPI 自动缩放），启动显示总览；总览、桌宠、角色、互动、设置五个 `UserControl` 页面按需创建并缓存。右上角关闭只最小化主菜单，桌宠继续运行；固定的“退出 YimyWalk”才进入宿主退出清理。托盘入口保留为兼容资源。
+- **代码已实现**：桌宠页按稳定 `InstanceId` 增量维护列表和选择，删除/清空后的空状态会禁用详情操作；三态布尔覆盖和“跟随全局/自定义”活跃度覆盖均调用 `AppHost` 业务门面。详情显示单实例临时生效说明、来源和实际值。角色页预览目录中的 idle1/index 0，并且只有明确点击“设为下次创建角色”才写入下次创建默认角色；桌宠详情使用实例实际角色定义。预览复用 `FrameSurfaceCache`，刷新失败保留旧定义租约。
+- **代码已实现**：互动页绑定默认主动走动、默认自动气泡、全局自动气泡运行级限制、活跃度倍率、饥饿增长和应用切换反馈；关闭外部反馈会停止专用前台轮询。设置页绑定全局缩放、窗口顶部落脚、首选显示器和保存/恢复诊断；`SettingsSaveCoordinator` 区分已应用、保存中、已保存和保存失败，并提供重试。`WarningLimit` 继续校验但当前没有对应运行时行为，因此不渲染无效控件。
+- **构建通过**：
+  - `.tools/dotnet/dotnet.exe build src/YimyWalk.App/YimyWalk.App.csproj --configuration Release -p:Platform=x64 --no-restore`：0 警告、0 错误。
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1 -Rounds 1 -Role slime`：构建通过，真实双屏会话完成 1/10/50/100 创建和清空，清空后 `ACTIVE=0 WINDOWS=0 CACHE=0`。
+- **逻辑测试通过**：`.tools/dotnet/dotnet.exe test YimyWalk.sln --configuration Release --no-restore`，**101/101** Core 测试通过；新增覆盖默认/实例行为覆盖和恢复跟随。
+- **Windows 桌面已验证**：最近一次 `scripts/desktop-input-smoke.ps1` 返回 `RESULT PASS`。真实会话验证了任务栏主窗口、五页导航、关闭转最小化/恢复、实例选择、idle1 单帧、单实例 WalkOverride、互动和设置控件、虚拟食物、托盘隐藏/显示/清空、角色刷新成功/失败保留以及显式退出清理。当前运行记录包含主屏 1920×1080（工作区 1920×1020、scale 1.25）和右侧副屏 3200×1800（工作区 3200×1740、scale 1.25）；批量 smoke 另一次记录为 1536×864 + 2560×1440 双屏拓扑。
+- **Windows 桌面未验证**：透明穿透依赖当前可见桌面；若其他窗口或安全桌面遮挡，输入 smoke 会输出 `RESULT UNVERIFIED INPUT_ROUTING_BLOCKED` 并返回未验证状态。物理拔插、睡眠/唤醒、负坐标/垂直排列显示器、长时间 CPU/内存曲线、系统注销/关机的真实回归和托盘最终删除决策仍未完成，不能用 Core 测试或页面截图替代。
+
 # 当前状态（2026-10-05，v0.1.5 拖拽丢出跨屏循环）
 
 ## v0.1.5 拖拽丢出空中跨屏循环（2026-10-05）

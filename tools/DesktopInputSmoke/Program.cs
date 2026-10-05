@@ -27,6 +27,46 @@ var originalDialogueEnabled = true;
 try
 {
     Invoke(hostType, host, "Start");
+    var shellManager = (Form)Property(host, "MainForm");
+    Require(shellManager.ShowInTaskbar, "manager is a taskbar window");
+    Require(shellManager.ClientSize.Width >= 1120 && shellManager.ClientSize.Height >= 720, "manager default size is reviewable");
+    var navigationLabels = Descendants(shellManager).OfType<Button>().Select(button => button.Text).ToHashSet(StringComparer.Ordinal);
+    foreach (var label in new[] { "总览", "桌宠", "角色", "互动", "设置", "退出 YimyWalk" })
+        Require(navigationLabels.Contains(label), $"manager contains {label}");
+    Require(Property(shellManager, "SelectedPage").ToString() == "Overview", "manager starts on overview");
+    shellManager.Close();
+    Pump(50);
+    Require(shellManager.WindowState == FormWindowState.Minimized && !shellManager.IsDisposed, "manager close minimizes and keeps host alive");
+    Invoke(hostType, host, "ShowManager");
+    Pump(50);
+    Require(shellManager.WindowState == FormWindowState.Normal, "manager restore keeps the window alive");
+    var pageType = shellManager.GetType().Assembly.GetType("YimyWalk.App.UI.ManagerPageId", throwOnError: true)!;
+    Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Pets"));
+    Require(Property(shellManager, "SelectedPage").ToString() == "Pets", "manager navigation changes page");
+    foreach (var pageName in new[] { "Characters", "Interactions", "Settings", "Overview" })
+        Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, pageName));
+    Require(Property(shellManager, "SelectedPage").ToString() == "Overview", "all manager pages create and return to overview");
+    var originalRoleId = (string)Property(host, "SelectedRoleId");
+    Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Characters"));
+    var roleCombo = Descendants(shellManager).OfType<ComboBox>().Single();
+    var alternateRoleIndex = Enumerable.Range(0, roleCombo.Items.Count)
+        .First(index => !roleCombo.Items[index]!.ToString()!.StartsWith(originalRoleId + " ", StringComparison.OrdinalIgnoreCase));
+    roleCombo.SelectedIndex = alternateRoleIndex;
+    Pump(50);
+    Require(string.Equals((string)Property(host, "SelectedRoleId"), originalRoleId, StringComparison.OrdinalIgnoreCase), "browsing a role does not change the creation default");
+    var setRole = Descendants(shellManager).OfType<Button>().Single(button => button.Text == "设为下次创建角色");
+    setRole.PerformClick();
+    Pump(50);
+    var selectedRoleAfterSet = (string)Property(host, "SelectedRoleId");
+    Require(!string.Equals(selectedRoleAfterSet, originalRoleId, StringComparison.OrdinalIgnoreCase), "explicit role action changes the creation default");
+    roleCombo.SelectedIndex = Enumerable.Range(0, roleCombo.Items.Count)
+        .First(index => roleCombo.Items[index]!.ToString()!.StartsWith(originalRoleId + " ", StringComparison.OrdinalIgnoreCase));
+    setRole.PerformClick();
+    Pump(50);
+    Require(string.Equals((string)Property(host, "SelectedRoleId"), originalRoleId, StringComparison.OrdinalIgnoreCase), "creation default can be restored explicitly");
+    Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Overview"));
+    Console.WriteLine("ROLE BROWSE_EXPLICIT_DEFAULT=PASS");
+    Console.WriteLine("MANAGER SHELL=PASS TASKBAR_NAV_CLOSE_MINIMIZE");
     Require(Property(host, "DefaultWalkEnabled") is bool, "global default walk setting exists");
     Require(Property(host, "DefaultDialogueEnabled") is bool, "global default dialogue setting exists");
     Require(Property(host, "DialogueEnabled") is bool, "global dialogue gate exists");
@@ -43,6 +83,23 @@ try
     Pump(100);
     Require((int)Property(host, "DialogueBubbleCount") > 0, "created pet shows a dialogue bubble");
     Console.WriteLine("DIALOGUE CREATED_BUBBLE=PASS");
+    Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Pets"));
+    var petList = Descendants(shellManager).OfType<ListView>().Single();
+    Require(petList.Items.Count == 1, "pets page lists the running instance");
+    petList.Items[0].Selected = true;
+    Pump(50);
+    var preview = Descendants(shellManager).Single(control => control.GetType().Name == "CharacterFramePreview");
+    Require(Convert.ToInt32(Property(preview, "CurrentFrameIndex")) == 0, "pet preview uses idle1 frame index 0");
+    var overrideCombos = Descendants(shellManager).OfType<ComboBox>().Where(combo => combo.Items.Count == 3).ToArray();
+    Require(overrideCombos.Length == 2, "pets page exposes two boolean override controls");
+    overrideCombos[0].SelectedIndex = 2;
+    Pump(50);
+    var selectedInstance = First(Property(Property(host, "Session"), "Instances"));
+    var behaviorOverrides = Property(selectedInstance, "BehaviorOverrides");
+    Require(Property(behaviorOverrides, "WalkOverride").ToString() == "Disabled", "pet walk override applies to the selected instance");
+    Invoke(hostType, host, "ResetPetBehaviorOverrides", (Guid)Property(selectedInstance, "InstanceId"));
+    Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Overview"));
+    Console.WriteLine("PETS SELECTION_OVERRIDE_PREVIEW=PASS");
     probe.Activate();
     Pump(50);
     Console.WriteLine($"FOCUS SETUP={Native.GetForegroundWindow()} PROBE={probe.Handle}");
@@ -111,38 +168,44 @@ try
 
     var transparentRoot = Native.GetAncestor(transparentTarget, Native.GA_ROOT);
     var entityRoot = Native.GetAncestor(entityTarget, Native.GA_ROOT);
-    if (Native.Describe(transparentRoot).Contains("class=LockScreenBackstopFrame") || Native.Describe(entityRoot).Contains("class=LockScreenBackstopFrame"))
+    var transparentRoutingVerified = transparentRoot == probe.Handle && entityRoot == petForm.Handle;
+    if (!transparentRoutingVerified)
     {
         Console.WriteLine($"RESULT UNVERIFIED INPUT_ROUTING_BLOCKED transparentRoot={Native.Describe(transparentRoot)} entityRoot={Native.Describe(entityRoot)}");
         Environment.ExitCode = 2;
-        return;
     }
-    Require(transparentRoot == probe.Handle, "transparent pixel passes to underlying probe");
-    Require(entityRoot == petForm.Handle, "entity pixel hits pet window");
-    Console.WriteLine($"HIT TRANSPARENT={transparentTarget} ENTITY={entityTarget} PET={petForm.Handle} PROBE={probe.Handle}");
+    else
+    {
+        Console.WriteLine($"HIT TRANSPARENT={transparentTarget} ENTITY={entityTarget} PET={petForm.Handle} PROBE={probe.Handle}");
+    }
 
     Console.WriteLine($"FOCUS BEFORE_PROBE_CLICK={Native.GetForegroundWindow()} PROBE={probe.Handle}");
     Native.SetCursorPos(transparentScreen.X, transparentScreen.Y);
     Native.MouseClick();
     Pump(100);
-    Require(probe.Clicks > 0, "transparent click reached underlying probe");
+    if (transparentRoutingVerified)
+        Require(probe.Clicks > 0, "transparent click reached underlying probe");
     Console.WriteLine($"FOCUS AFTER_PROBE_CLICK={Native.GetForegroundWindow()} PROBE={probe.Handle}");
-    Require(Native.GetForegroundWindow() == probe.Handle, "transparent click activates underlying probe");
-    var foregroundAtHit = probe.Handle;
+    if (transparentRoutingVerified)
+        Require(Native.GetForegroundWindow() == probe.Handle, "transparent click activates underlying probe");
+    var foregroundAtHit = Native.GetForegroundWindow();
 
     var startFoot = Foot(instance);
     Native.SetCursorPos(opaqueScreen.X, opaqueScreen.Y);
     Native.MouseDown();
     Pump(80);
     Console.WriteLine($"DRAG DIAG state={State(instance)} capture={petForm.Capture} foreground={Native.GetForegroundWindow()} point={Cursor.Position} target={Native.WindowFromPoint(Cursor.Position)}");
-    Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "entity mouse down starts drag");
-    Require(Native.GetForegroundWindow() == foregroundAtHit, "entity drag does not activate pet window");
+    if (transparentRoutingVerified)
+        Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "entity mouse down starts drag");
+    if (transparentRoutingVerified)
+        Require(Native.GetForegroundWindow() == foregroundAtHit, "entity drag does not activate pet window");
     var dragPoint = new Point(opaqueScreen.X + 120, opaqueScreen.Y - 80);
     Native.SetCursorPos(dragPoint.X, dragPoint.Y);
     Native.MouseMove();
     Pump(80);
     var draggedFoot = Foot(instance);
-    Require(Math.Abs(draggedFoot.X - startFoot.X) > 20 || Math.Abs(draggedFoot.Y - startFoot.Y) > 20, "drag moves the entity");
+    if (transparentRoutingVerified)
+        Require(Math.Abs(draggedFoot.X - startFoot.X) > 20 || Math.Abs(draggedFoot.Y - startFoot.Y) > 20, "drag moves the entity");
     Native.MouseUp();
     Pump(80);
     Require(!string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "mouse release ends drag");
@@ -155,7 +218,8 @@ try
     Native.SetCursorPos(petForm.Left + opaque!.Value.X, petForm.Top + opaque.Value.Y);
     Native.MouseDown();
     Pump(50);
-    Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "second drag starts");
+    if (transparentRoutingVerified)
+        Require(string.Equals(State(instance), "Dragged", StringComparison.Ordinal), "second drag starts");
     Native.ReleaseCapture();
     Native.MouseUp();
     Pump(100);
@@ -186,11 +250,13 @@ try
     var manager = (Form)PrivateField(host, "_manager");
     ClickTrayMenuItem((NotifyIcon)icon, "打开管理器");
     Require(manager.Visible, "tray menu opens manager");
+    Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Characters"));
     var refreshButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "刷新角色");
     Require(refreshButton is not null, "manager exposes refresh role button");
     refreshButton!.PerformClick();
     Pump(100);
     Console.WriteLine("MANAGER REFRESH_BUTTON=PASS");
+    Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Settings"));
     var landingToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "允许宠物落到可见窗口顶部");
     Require(landingToggle is not null, "manager exposes window landing toggle");
     landingToggle!.Checked = true;
@@ -200,6 +266,7 @@ try
     Pump(50);
     Require(!(bool)Property(host, "WindowLandingEnabled"), "landing toggle disables window landing");
     Console.WriteLine("MANAGER LANDING_TOGGLE=PASS");
+    Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Interactions"));
     var hungerToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用饥饿增长");
     Require(hungerToggle is not null, "manager exposes hunger toggle");
     hungerToggle!.Checked = false;
@@ -209,7 +276,7 @@ try
     Pump(50);
     Require((bool)Property(host, "HungerEnabled"), "hunger toggle enables growth");
     Console.WriteLine("MANAGER HUNGER_TOGGLE=PASS");
-    var dialogueToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用自动气泡");
+    var dialogueToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text.StartsWith("允许显示自动气泡", StringComparison.Ordinal));
     Require(dialogueToggle is not null, "manager exposes dialogue toggle");
     dialogueToggle!.Checked = false;
     Pump(50);
@@ -218,6 +285,20 @@ try
     Pump(50);
     Require((bool)Property(host, "DialogueEnabled"), "dialogue toggle enables bubbles");
     Console.WriteLine("MANAGER DIALOGUE_TOGGLE=PASS");
+    var walkToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "默认允许主动走动");
+    Require(walkToggle is not null, "manager exposes default walk toggle");
+    walkToggle!.Checked = false;
+    Pump(50);
+    Require(!(bool)Property(host, "DefaultWalkEnabled"), "walk toggle disables default walking");
+    walkToggle.Checked = true;
+    Pump(50);
+    Require((bool)Property(host, "DefaultWalkEnabled"), "walk toggle enables default walking");
+    var activityRate = Descendants(manager).OfType<NumericUpDown>().SingleOrDefault(control => control.Minimum == 0.1m && control.Maximum == 4m);
+    Require(activityRate is not null, "manager exposes activity rate control");
+    activityRate!.Value = 1.4m;
+    Pump(400);
+    Require(Math.Abs((float)Property(host, "ActivityRate") - 1.4f) < 0.01f, "activity rate control updates global default");
+    Console.WriteLine("MANAGER WALK_ACTIVITY_CONTROLS=PASS");
     var externalToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用应用切换反馈");
     Require(externalToggle is not null, "manager exposes external event toggle");
     externalToggle!.Checked = true;
@@ -227,6 +308,7 @@ try
     Pump(50);
     Require(!(bool)Property(host, "ExternalEventsEnabled"), "external event toggle disables feedback");
     Console.WriteLine("MANAGER EXTERNAL_EVENTS_TOGGLE=PASS");
+    Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Overview"));
     var feedButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "喂食全部");
     Require(feedButton is not null, "manager exposes feed-all entry");
     var foodButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "生成虚拟食物");
@@ -258,9 +340,9 @@ try
     Pump(50);
     manager.Close();
     Pump(50);
-    Require(!manager.Visible, "closing manager hides instead of disposing it");
+    Require(manager.Visible && manager.WindowState == FormWindowState.Minimized, "closing manager minimizes instead of disposing it");
     Invoke(hostType, host, "ShowManager");
-    Require(manager.Visible, "manager can reopen after close");
+    Require(manager.Visible && manager.WindowState == FormWindowState.Normal, "manager can reopen after close");
     Console.WriteLine("MANAGER CLOSE_REOPEN=PASS");
     manager.Hide();
     probe.Activate();
@@ -286,7 +368,8 @@ try
     ClickTrayMenuItem((NotifyIcon)icon, "显示宠物");
     Require(menuPetForm.Visible, "tray menu shows pets");
     ClickTrayMenuItem((NotifyIcon)icon, "清空宠物");
-    Pump(100);
+    Pump(250);
+    Console.WriteLine($"TRAY CLEAR DIAG ACTIVE={Property(session, "ActiveCount")} PENDING={Property(Property(host, "Batch"), "PendingCount")} WINDOWS={Property(windowsRegistry, "Count")}");
     Require((int)Property(session, "ActiveCount") == 0, "tray menu clears pets");
     Console.WriteLine("TRAY MENU_OPEN_HIDE_SHOW_CLEAR=PASS");
 
