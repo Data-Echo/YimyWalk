@@ -1,0 +1,10 @@
+# UTF-8 dialogue groups; blank lines and comments are ignored.
+[idle]
+你好。
+今天也一起散步吧。
+
+[walk]
+慢慢走。
+
+[jump]
+跳！

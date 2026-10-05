@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\YimyWalk.Core\YimyWalk.Core.csproj" />
+    <ProjectReference Include="..\..\tools\CharacterValidator\CharacterValidator.csproj" />
   </ItemGroup>
 
 </Project>

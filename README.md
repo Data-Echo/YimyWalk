@@ -20,3 +20,15 @@ M3.2 已加入受全局上限和单宠冷却控制的非激活台词气泡；虚
 M3.3 已加入程序生成的虚拟食物：管理器可生成目标，宠物会认领、接近、消费并进入 Eat，目标视觉随后缩小消失；不会接触真实桌面文件或快捷方式。
 
 M3.4 已加入默认关闭的应用切换反馈开关；开启后只低频读取前台进程标识，实际外部程序事件矩阵仍需单独验证。
+
+M4.1 增加了角色作者校验器和静态预览：它直接复用 `YimyWalk.Core.CharacterLoader`，报告尺寸、Alpha、九帧映射、配置/对白来源和错误原因，并可生成预览图与独立的 3×3 锚点参考图。作者入口为：
+
+首次使用请先运行一次 `scripts/build-yimywalk.ps1`（或用工作区 SDK 还原 `YimyWalk.sln`）；校验脚本随后使用 `--no-restore`，不会在每次检查角色时隐式联网。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-character.ps1 `
+  -Path .\Characters\cat `
+  -PreviewPath .\artifacts\cat-preview.png
+```
+
+角色格式和当前支持边界见 [`docs/CHARACTER_FORMAT.md`](docs/CHARACTER_FORMAT.md)，带配置/对白的模板见 [`examples/character-template`](examples/character-template)。`actions.png` 和脚本型扩展仍未实现。发布输出是依赖 .NET 8 Windows Desktop runtime 的 framework-dependent 包；构建和核心测试通过不等于 Windows 桌面验收完成。

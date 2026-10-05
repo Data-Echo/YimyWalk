@@ -1,19 +1,36 @@
-# YimyWalk 角色格式（M0 约定）
+# YimyWalk 角色包格式（M4.1）
 
-## 最小包
+角色包是一个目录。最小格式只有一张透明 PNG：
 
 ```text
 Characters/<id>/
   sprite.png
 ```
 
-`id` 使用目录名，限制为单层相对目录名，不允许路径分隔符、`.`、`..` 或控制字符。`sprite.png` 必须是可读取的带 Alpha PNG，宽高都能被 3 整除，切成 9 个相同大小的格。总像素和文件体积上限由加载器集中校验；全透明、损坏或越界输入拒绝而不影响其他角色。
+`<id>` 是目录名。应用不会执行角色目录里的脚本、命令或外部资源。`sprite.png` 必须是带 Alpha 的 PNG，宽高都能被 3 整除，图像按从左到右、从上到下切成九个等大的格子。当前限制由 Core 的 `CharacterLoader` 执行：单边最多 2048 像素、总像素最多 16,777,216、PNG 最多 32 MiB，并拒绝损坏、全透明或没有 Alpha 的输入。
 
-帧索引从左到右、从上到下：0-2 发呆，3-5 向右行走，6 起跳，7 滞空，8 下落。向左由程序绕脚底锚点水平镜像。默认锚点为 `(0.5 * cellWidth, 0.9 * cellHeight)`，逻辑速度单位为像素/秒，物理位置和命中区域使用同一缩放换算。
+## 九格协议
 
-## 可选配置
+| 索引 | 含义 | 使用方式 |
+| ---: | --- | --- |
+| 0–2 | 发呆 | 按 `idleFps` 循环 |
+| 3–5 | 朝右走路 | 按 `walkFps` 循环；朝左由程序水平翻转 |
+| 6 | 起跳 | 上升阶段使用 |
+| 7 | 最高点附近 | 短暂使用，不是循环动画 |
+| 8 | 下落 | 下降阶段使用 |
 
-`character.json` 的 `schemaVersion` 为 `1`。缺失字段回退内置默认值；非法数字、负尺寸、NaN、无穷大和未知动作引用产生可读错误并保留上一份角色。
+第三排不是普通循环动画。直接从屏幕上方生成或拖拽释放时可以从下落帧开始。默认脚底锚点为单格宽度的 `0.5`、单格高度的 `0.9`；配置中的锚点仍以单格比例填写。
+
+## 可选文件
+
+```text
+Characters/<id>/
+  sprite.png
+  character.json   # 可选
+  dialogue.txt     # 可选
+```
+
+缺少 `character.json` 或 `dialogue.txt` 时使用 Core 内置默认值，因此只有 `sprite.png` 的目录可以直接运行。当前支持的配置字段如下（速度和重力单位是像素/秒及像素/秒²）：
 
 ```json
 {
@@ -22,15 +39,45 @@ Characters/<id>/
   "scale": 1.0,
   "anchor": { "x": 0.5, "y": 0.9 },
   "animation": { "idleFps": 3, "walkFps": 8 },
-  "movement": { "walkSpeed": 60, "jumpSpeed": 450, "gravity": 1500, "maxFallSpeed": 1500 },
-  "behavior": { "idleSecondsMin": 2, "idleSecondsMax": 8, "hungerIncreasePerMinute": 0.01, "speechCooldownSeconds": 45 }
+  "movement": {
+    "walkSpeed": 60,
+    "jumpSpeed": 450,
+    "gravity": 1500,
+    "maxFallSpeed": 1500
+  },
+  "behavior": {
+    "idleSecondsMin": 2,
+    "idleSecondsMax": 8,
+    "hungerIncreasePerMinute": 0.01,
+    "speechCooldownSeconds": 45
+  }
 }
 ```
 
-配置合并顺序为内置默认 → 角色配置 → 用户覆盖；临时实例状态不写回作者文件。`dialogue.txt` 使用 UTF-8 分组格式，缺失分组回退内置中文台词。`actions.png` 只有在配置声明单格尺寸、帧映射、速度、循环和锚点后才加载；高级动作缺失时使用基础帧和程序化效果。
+缺少字段会回退默认值；`schemaVersion` 若出现必须为 `1`。当前未知 JSON 属性会被忽略，不能依赖它们改变行为。数值必须是有限数并落在 Loader 的限制内，`idleSecondsMax` 不能小于 `idleSecondsMin`。
 
-## M1 可运行角色
+`dialogue.txt` 使用 UTF-8。空行以及以 `#` 或 `;` 开头的行会忽略；用 `[idle]`、`[walk]`、`[jump]` 等标题切换分组。缺少分组会回退内置台词。每个角色最多 1000 行，每行最多 500 个字符，文件最多 256 KiB。
 
-仓库内的 `Characters/cat/sprite.png` 和 `Characters/slime/sprite.png` 是可直接加载的两套测试角色。它们故意不带 `character.json`，用于验证只有一张 PNG 时仍能使用内置名称、速度、重力、锚点和台词默认值。生成脚本为 `tools/GenerateTestCharacters.ps1`，不会复制第三方素材。换角色只需替换角色目录，不需要修改代码。
+## 校验和预览
 
-第三排不是普通循环动画：状态机在起跳、接近零垂直速度和下落时分别选择 6、7、8 帧。向左行走只对 3—5 帧做水平镜像，默认脚底锚点仍是单格宽度的 0.5、单格高度的 0.9。
+验证器直接调用运行时使用的 `YimyWalk.Core.CharacterLoader`，不会生成窗口，也不会修改角色文件。工作区 SDK 已准备好后运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-character.ps1 `
+  -Path .\Characters\cat `
+  -PreviewPath .\artifacts\cat-preview.png `
+  -ReferencePath .\docs\assets\character-grid-reference.png
+```
+
+成功返回 0，并报告尺寸、单格尺寸、Alpha、九帧映射、配置来源、对白来源、缩放和锚点。角色无效返回 1 并保留上一条可读错误；参数或工具使用错误返回 2。输入目录可以包含空格和中文。预览是由九个已解码帧重新组合的 PNG，参考图只包含 3×3 网格和默认锚点示意；两者都不写回 `sprite.png`。校验失败时不会创建或替换预览输出，若目标已有文件则保持原样并打印提示。
+
+仓库中的 `Characters/cat` 和 `Characters/slime` 是两套可直接使用的 sprite-only 角色。`examples/character-template` 提供带配置和对白的作者模板；`docs/assets/character-grid-reference.png` 是不应放进运行时 sprite 的参考图。
+
+预览示例：
+
+![cat 3×3 preview](assets/cat-preview.png)
+![slime 3×3 preview](assets/slime-preview.png)
+
+## 当前边界
+
+本阶段支持 3×3 基础动作、可选配置和对白，以及工具生成的静态预览。`actions.png`、额外动作映射、逐角色用户覆盖层、脚本和远程资源尚未实现；把它们放进目录不会启用这些功能。完整角色刷新界面属于后续阶段，但刷新失败保留旧定义、旧绘制资源在无实例和无在途引用后释放的生命周期约束已经由宿主负责。

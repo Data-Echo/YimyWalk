@@ -1,3 +1,22 @@
+# 当前状态（2026-10-05，M4.1 角色作者材料）
+
+## M4.1 实际结果
+
+- **代码已实现**：新增 `tools/CharacterValidator`（net8.0），直接引用 `YimyWalk.Core.CharacterLoader`；提供角色诊断、3×3 预览 PNG 和网格/默认脚底锚点参考 PNG。Core、作者工具和绘制适配层都可使用 ImageSharp 解码/转换像素；Core 仍不持有窗口、Bitmap 或其他平台绘制对象。
+- **作者材料已实现**：`docs/CHARACTER_FORMAT.md` 已按当前实现区分 supported/planned；`examples/character-template` 提供配置和 UTF-8 对白示例；`Characters/cat`、`Characters/slime` 保持 sprite-only，可直接加载；`docs/assets/` 保存可重复生成的 cat/slime 预览和网格参考图。
+- **入口已实现**：`scripts/validate-character.ps1` 支持空格/中文路径、可选预览和参考图，验证失败返回非零；不会修改输入角色文件。未知 JSON 属性当前会忽略，`actions.png` 尚未实现，文档已明确说明。
+- **构建通过**：`.tools/dotnet/dotnet.exe test YimyWalk.sln --configuration Release --no-restore` 通过 85/85；`scripts/build-yimywalk.ps1` 通过并生成 x64 framework-dependent 发布目录。
+- **Core/工具验证通过**：已运行 cat、slime、template、含空格和中文路径的角色；坏 PNG 返回 1；预览/参考图尺寸、参考图透明区域与锚点断言通过；输入 sprite 的 SHA-256 前后不变。
+- **Windows 桌面状态**：本任务没有新增桌面行为，M4.1 的作者工具不需要 GUI 验收。既有单显示器桌面证据仍按历史交接保留；第二显示器/DPI 矩阵继续标记为 **Windows 桌面未验证（用户已暂缓）**。核心测试或普通窗口预览不能替代该验收。
+
+## 仍需单独处理的验证债务
+
+历史 M3 交接中的“代码已实现”不等于所有需求已验收：无聊状态尚未驱动完整行为决策，走路自然结束/高级动作仍有限；外部应用 smoke 的台词断言不能证明真实事件；气泡点击穿透、虚拟食物窗口层级/目标过期与路径约束仍需独立回归；长时 CPU/内存/句柄趋势和权限受限场景未完成。后续稳定性任务必须针对这些证据补强，不能用文档或模拟测试改写为通过。
+
+## 下一条可执行任务
+
+执行 M4.2：完善可重复 publish/package、第三方许可和启动自检诊断；保持不联网、不自启动、不修改真实桌面文件，并在完成后再次区分代码、构建、Core 测试和 Windows 桌面验证状态。
+
 # YimyWalk 状态交接
 
 更新时间：2026-10-05

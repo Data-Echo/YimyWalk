@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "displayName": "模板角色",
+  "scale": 1.0,
+  "anchor": { "x": 0.5, "y": 0.9 },
+  "animation": { "idleFps": 3, "walkFps": 8 },
+  "movement": {
+    "walkSpeed": 60,
+    "jumpSpeed": 450,
+    "gravity": 1500,
+    "maxFallSpeed": 1500
+  },
+  "behavior": {
+    "idleSecondsMin": 2,
+    "idleSecondsMax": 8,
+    "hungerIncreasePerMinute": 0.01,
+    "speechCooldownSeconds": 45
+  }
+}
