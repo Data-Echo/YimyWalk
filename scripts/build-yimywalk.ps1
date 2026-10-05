@@ -2,20 +2,36 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$PublishPath
+    [string]$PublishPath,
+    [string]$DotnetPath,
+    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [string]$Version = '0.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$dotnet = Join-Path $root '.tools\dotnet\dotnet.exe'
-if (-not (Test-Path $dotnet)) { throw "Workspace SDK not found: $dotnet" }
+$dotnet = if (-not [string]::IsNullOrWhiteSpace($DotnetPath)) {
+    [IO.Path]::GetFullPath($DotnetPath)
+} elseif (Test-Path (Join-Path $root '.tools\dotnet\dotnet.exe')) {
+    Join-Path $root '.tools\dotnet\dotnet.exe'
+} else {
+    $command = Get-Command dotnet.exe -ErrorAction SilentlyContinue
+    if ($null -eq $command) { throw 'No .NET SDK found. Install .NET 8 SDK or pass -DotnetPath.' }
+    $command.Source
+}
+if (-not (Test-Path -LiteralPath $dotnet -PathType Leaf)) { throw "dotnet executable not found: $dotnet" }
 
 Push-Location $root
 try {
-    & $dotnet restore YimyWalk.sln --runtime win-x64
+    & $dotnet restore YimyWalk.sln --runtime win-x64 -p:Version=$Version -p:VersionPrefix=$Version
     if ($LASTEXITCODE -ne 0) { throw "dotnet restore failed with exit code $LASTEXITCODE" }
-    & $dotnet test YimyWalk.sln --configuration $Configuration --no-restore
-    if ($LASTEXITCODE -ne 0) { throw "dotnet test failed with exit code $LASTEXITCODE" }
+    $testProject = Join-Path $root 'tests\YimyWalk.Core.Tests\YimyWalk.Core.Tests.csproj'
+    if (Test-Path -LiteralPath $testProject -PathType Leaf) {
+        & $dotnet test YimyWalk.sln --configuration $Configuration --no-restore
+        if ($LASTEXITCODE -ne 0) { throw "dotnet test failed with exit code $LASTEXITCODE" }
+    } else {
+        Write-Host 'Tests are not included in this product source export; skipping test project.'
+    }
 
     $defaultPublish = Join-Path $root "src\YimyWalk.App\bin\x64\$Configuration\net8.0-windows\win-x64\publish"
     if ([string]::IsNullOrWhiteSpace($PublishPath)) { $PublishPath = $defaultPublish }
@@ -34,18 +50,26 @@ try {
     if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
     New-Item -ItemType Directory -Path $publish -Force | Out-Null
 
-    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained false --no-restore -p:Platform=x64 -p:PublishDir="$publish\"
+    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained false --no-restore -p:Platform=x64 -p:Version=$Version -p:VersionPrefix=$Version -p:PublishDir="$publish\"
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+
+    Get-ChildItem -LiteralPath $publish -File -Recurse -Filter '*.pdb' | Remove-Item -Force
 
     $characters = Join-Path $publish 'Characters'
     if (Test-Path $characters) { Remove-Item -LiteralPath $characters -Recurse -Force }
     Copy-Item -LiteralPath (Join-Path $root 'Characters') -Destination $characters -Recurse
 
     Copy-Item -LiteralPath (Join-Path $root 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $publish 'THIRD_PARTY_NOTICES.md') -Force
+    Copy-Item -LiteralPath (Join-Path $root 'RELEASE_NOTES.md') -Destination (Join-Path $publish 'RELEASE_NOTES.md') -Force
+    Copy-Item -LiteralPath (Join-Path $root 'Start-YimyWalk.ps1') -Destination (Join-Path $publish 'Start-YimyWalk.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $root 'scripts\run-yimywalk.ps1') -Destination (Join-Path $publish 'run-yimywalk.ps1') -Force
+    $licenses = Join-Path $publish 'licenses'
+    if (Test-Path $licenses) { Remove-Item -LiteralPath $licenses -Recurse -Force }
+    Copy-Item -LiteralPath (Join-Path $root 'licenses') -Destination $licenses -Recurse
     $packageReadme = @"
-YimyWalk offline Windows x64 package
+YimyWalk v$Version offline Windows x64 package
 
-Run YimyWalk.App.exe from this directory. This framework-dependent package requires:
+Run Start-YimyWalk.ps1 (or YimyWalk.App.exe) from this directory. This framework-dependent package requires:
 - .NET 8 Microsoft.NETCore.App (x64)
 - .NET 8 Microsoft.WindowsDesktop.App (x64)
 
@@ -59,12 +83,13 @@ Third-party license and attribution information is in THIRD_PARTY_NOTICES.md.
     $manifest = [ordered]@{
         formatVersion = 1
         product = 'YimyWalk'
+        version = $Version
         architecture = 'win-x64'
         targetFramework = 'net8.0-windows'
         selfContained = $false
         requiredRuntimes = @('Microsoft.NETCore.App 8.0', 'Microsoft.WindowsDesktop.App 8.0')
         roles = $roles
-        licenseFiles = @('THIRD_PARTY_NOTICES.md')
+        licenseFiles = @('THIRD_PARTY_NOTICES.md', 'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt')
         networkEnabledByDefault = $false
         startupRegistrationEnabled = $false
         requiresAdministrator = $false
@@ -75,7 +100,8 @@ Third-party license and attribution information is in THIRD_PARTY_NOTICES.md.
     $requiredFiles = @(
         'YimyWalk.App.exe', 'YimyWalk.App.dll', 'YimyWalk.App.deps.json',
         'YimyWalk.App.runtimeconfig.json', 'YimyWalk.Core.dll',
-        'SixLabors.ImageSharp.dll', 'THIRD_PARTY_NOTICES.md',
+        'SixLabors.ImageSharp.dll', 'THIRD_PARTY_NOTICES.md', 'RELEASE_NOTES.md',
+        'Start-YimyWalk.ps1', 'run-yimywalk.ps1', 'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt',
         'PACKAGE_README.txt', 'PACKAGE_MANIFEST.json')
     foreach ($file in $requiredFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $publish $file) -PathType Leaf)) {

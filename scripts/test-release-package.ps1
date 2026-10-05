@@ -1,0 +1,35 @@
+[CmdletBinding()]
+param([Parameter(Mandatory = $true)][string]$Path, [string]$Version = '0.1.0')
+$ErrorActionPreference = 'Stop'
+$package = (Resolve-Path -LiteralPath $Path).Path
+$manifest = Get-Content -LiteralPath (Join-Path $package 'PACKAGE_MANIFEST.json') -Raw | ConvertFrom-Json
+if ($manifest.version -ne $Version) { throw "Package version must be $Version." }
+foreach ($file in @('YimyWalk.App.exe', 'YimyWalk.App.dll', 'YimyWalk.Core.dll', 'SixLabors.ImageSharp.dll',
+    'YimyWalk.App.runtimeconfig.json', 'YimyWalk.App.deps.json', 'Start-YimyWalk.ps1', 'run-yimywalk.ps1',
+    'Characters/cat/sprite.png', 'Characters/slime/sprite.png', 'THIRD_PARTY_NOTICES.md',
+    'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt', 'RELEASE_NOTES.md', 'PACKAGE_README.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $package $file) -PathType Leaf)) { throw "Missing: $file" }
+}
+$assembly = [Reflection.AssemblyName]::GetAssemblyName((Join-Path $package 'YimyWalk.App.dll'))
+if ($assembly.Version.ToString(3) -ne $Version) { throw 'Assembly version does not match package version.' }
+$files = @(Get-ChildItem -LiteralPath $package -File -Recurse)
+foreach ($file in $files) {
+    $relative = $file.FullName.Substring($package.Length + 1).Replace('\', '/')
+    if ($relative -match '(^|/)(tests|tools|vendor|src|obj|bin|\.git|\.tools)(/|$)|\.(pdb|cs|csproj|sln|log)$') {
+        throw "Development file leaked into release: $relative"
+    }
+}
+$listed = @{}
+foreach ($line in Get-Content -LiteralPath (Join-Path $package 'PACKAGE_CHECKSUMS.txt')) {
+    if ($line -notmatch '^([0-9A-F]{64})  (.+)$') { throw "Invalid checksum line: $line" }
+    $expected = $Matches[1]
+    $relative = $Matches[2]
+    if ([IO.Path]::IsPathRooted($relative) -or $relative -match '(^|[/\\])\.\.([/\\]|$)' -or $listed.ContainsKey($relative)) {
+        throw "Unsafe or duplicate checksum path: $relative"
+    }
+    $actual = (Get-FileHash -LiteralPath (Join-Path $package $relative) -Algorithm SHA256).Hash
+    if ($actual -ne $expected) { throw "Checksum mismatch: $relative" }
+    $listed[$relative] = $true
+}
+if ($listed.Count -ne $files.Count - 1) { throw 'Checksum inventory does not cover the entire package.' }
+Write-Output "PACKAGE PASS VERSION=$Version FILES=$($files.Count) CHECKSUMS=$($listed.Count)"

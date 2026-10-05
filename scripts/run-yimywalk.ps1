@@ -7,10 +7,15 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $PSScriptRoot
+$scriptRoot = $PSScriptRoot
+$root = if (Test-Path -LiteralPath (Join-Path $scriptRoot 'YimyWalk.App.exe') -PathType Leaf) {
+    $scriptRoot
+} else {
+    Split-Path -Parent $scriptRoot
+}
 $defaultPublish = Join-Path $root "src\YimyWalk.App\bin\x64\$Configuration\net8.0-windows\win-x64\publish"
 $publish = if ([string]::IsNullOrWhiteSpace($PublishPath)) {
-    $defaultPublish
+    if (Test-Path -LiteralPath (Join-Path $root 'YimyWalk.App.exe') -PathType Leaf) { $root } else { $defaultPublish }
 } elseif ([IO.Path]::IsPathRooted($PublishPath)) {
     [IO.Path]::GetFullPath($PublishPath)
 } else {

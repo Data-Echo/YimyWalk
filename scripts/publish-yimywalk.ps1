@@ -2,7 +2,10 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$OutputPath = 'artifacts\publish\yimywalk-win-x64'
+    [string]$OutputPath = 'artifacts\publish\yimywalk-win-x64',
+    [string]$DotnetPath,
+    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [string]$Version = '0.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,7 +20,7 @@ $output = if ([IO.Path]::IsPathRooted($OutputPath)) {
 } else {
     [IO.Path]::GetFullPath((Join-Path $root $OutputPath))
 }
-& $build -Configuration $Configuration -PublishPath $output
+& $build -Configuration $Configuration -PublishPath $output -DotnetPath $DotnetPath -Version $Version
 if ($LASTEXITCODE -ne 0) {
     throw "YimyWalk publish failed with exit code $LASTEXITCODE."
 }

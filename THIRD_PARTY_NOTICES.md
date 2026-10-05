@@ -18,3 +18,9 @@ The upstream README credits NAudio and several sprite authors. We keep the snaps
 - Source: <https://github.com/SixLabors/ImageSharp>
 - License: Six Labors Split License 1.0 (Apache 2.0 for qualifying open-source/source-available, qualifying lower-revenue or nonprofit use; other direct commercial use may require the Six Labors commercial license).
 - Use in YimyWalk: decode `sprite.png` into platform-neutral RGBA frame buffers in `YimyWalk.Core`.
+- The complete license text shipped with the source and release package is in `licenses/ImageSharp-LICENSE.txt`; the Apache 2.0 text referenced by the split license is in `licenses/Apache-2.0.txt`.
+
+## YimyWalk sample roles
+
+- `Characters/cat/sprite.png` and `Characters/slime/sprite.png` are the YimyWalk sample role assets included in this repository.
+- They are not copied from the `vendor/esheep/` snapshot. The upstream snapshot's bundled media is not included in the release.
