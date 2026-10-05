@@ -6,6 +6,7 @@ internal sealed class TrayIconHost : IDisposable
 {
     private readonly AppHost _host;
     private readonly NotifyIcon _icon;
+    private readonly Icon _appIcon;
 
     public TrayIconHost(AppHost host)
     {
@@ -17,7 +18,8 @@ internal sealed class TrayIconHost : IDisposable
         menu.Items.Add("显示宠物", null, (_, _) => _host.SetPetsVisible(true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("退出", null, (_, _) => _host.ExitApplication());
-        _icon = new NotifyIcon { Icon = SystemIcons.Application, Text = "YimyWalk", ContextMenuStrip = menu, Visible = true };
+        _appIcon = AppIcon.Load();
+        _icon = new NotifyIcon { Icon = _appIcon, Text = "YimyWalk", ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => _host.ShowManager();
     }
 
@@ -25,5 +27,6 @@ internal sealed class TrayIconHost : IDisposable
     {
         _icon.Visible = false;
         _icon.Dispose();
+        _appIcon.Dispose();
     }
 }
