@@ -1,4 +1,4 @@
-# YimyWalk v0.1.2
+# YimyWalk v0.1.3
 
 ## Included
 
@@ -6,7 +6,7 @@
 - Data-driven 3×3 PNG roles; `cat` and `slime` are included.
 - Dragging, throwing, movement, falling, optional window-top landing, hunger, dialogue bubbles, virtual food, and opt-in foreground feedback.
 - Startup diagnostics for missing runtimes, incomplete packages, and invalid role directories.
-- Application icon derived from `icon_yimy.png`, normalized to 512×512 and packaged as a multi-size Windows icon.
+- Application icon derived from `icon_yimy.png`, normalized to 512×512 and packaged as a multi-size Windows icon. The same embedded icon is used by the executable, manager taskbar window, and notification-area tray icon.
 - Release entry is the self-contained single-file `YimyWalk.exe`; double-clicking it starts the app without a separate .NET runtime installation.
 
 ## Requirements and boundaries

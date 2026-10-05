@@ -20,6 +20,7 @@ internal sealed class ManagerForm : Form
     {
         _host = host;
         Text = "YimyWalk";
+        Icon = AppIcon.Load();
         Width = 430;
         Height = 275;
         FormBorderStyle = FormBorderStyle.FixedDialog;

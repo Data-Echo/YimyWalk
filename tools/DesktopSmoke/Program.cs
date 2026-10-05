@@ -40,6 +40,25 @@ Console.WriteLine("SETTINGS STORE DEFAULT_SAVE_BACKUP=PASS");
 Directory.Delete(settingsRoot, recursive: true);
 var type = app.GetType("YimyWalk.App.Host.AppHost", true)!;
 var host = Activator.CreateInstance(type, nonPublic: true)!;
+const string iconResourceName = "YimyWalk.App.Resources.yimywalk.ico";
+if (!app.GetManifestResourceNames().Contains(iconResourceName, StringComparer.Ordinal))
+    throw new InvalidOperationException($"application icon resource is not embedded: {iconResourceName}");
+var appIconType = app.GetType("YimyWalk.App.UI.AppIcon", true)!;
+using var expectedIcon = (Icon)appIconType.GetMethod("Load", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!
+    .Invoke(null, null)!;
+var manager = type.GetField("_manager", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(host)
+    ?? throw new MissingFieldException(type.FullName, "_manager");
+var managerIcon = manager.GetType().GetProperty("Icon")?.GetValue(manager) as Icon
+    ?? throw new InvalidOperationException("manager form did not load the application icon");
+var tray = type.GetField("_tray", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(host)
+    ?? throw new MissingFieldException(type.FullName, "_tray");
+var trayIconHostIcon = tray.GetType().GetField("_icon", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tray)
+    ?? throw new MissingFieldException(tray.GetType().FullName, "_icon");
+var trayIcon = trayIconHostIcon.GetType().GetProperty("Icon")?.GetValue(trayIconHostIcon) as Icon
+    ?? throw new InvalidOperationException("tray icon did not load the application icon");
+if (!SameIcon(expectedIcon, managerIcon) || !SameIcon(expectedIcon, trayIcon))
+    throw new InvalidOperationException($"manager/tray icons do not match the embedded application icon: expected={expectedIcon.Size}, manager={managerIcon.Size}, tray={trayIcon.Size}");
+Console.WriteLine($"APPLICATION ICON RESOURCE={iconResourceName} SIZE={expectedIcon.Size} MANAGER=PASS TRAY=PASS");
 var session = type.GetProperty("Session")!.GetValue(host)!;
 var windows = type.GetProperty("Windows")!.GetValue(host)!;
 var active = session.GetType().GetProperty("ActiveCount")!;
@@ -195,6 +214,17 @@ static float FootY(object instance)
 {
     var value = Property(instance, "FootPosition");
     return (float)value.GetType().GetField("Y")!.GetValue(value)!;
+}
+
+static bool SameIcon(Icon expected, Icon actual)
+{
+    using var expectedBitmap = expected.ToBitmap();
+    using var actualBitmap = actual.ToBitmap();
+    if (expectedBitmap.Size != actualBitmap.Size) return false;
+    for (var y = 0; y < expectedBitmap.Height; y++)
+        for (var x = 0; x < expectedBitmap.Width; x++)
+            if (expectedBitmap.GetPixel(x, y).ToArgb() != actualBitmap.GetPixel(x, y).ToArgb()) return false;
+    return true;
 }
 
 static class Native

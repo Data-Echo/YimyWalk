@@ -11,6 +11,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Resources\yimywalk.ico" LogicalName="YimyWalk.App.Resources.yimywalk.ico" />
     <ProjectReference Include="..\YimyWalk.Core\YimyWalk.Core.csproj" />
     <InternalsVisibleTo Include="DesktopDisplaySmoke" />
   </ItemGroup>

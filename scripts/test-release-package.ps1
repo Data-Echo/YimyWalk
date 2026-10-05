@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory = $true)][string]$Path, [string]$Version = '0.1.2')
+param([Parameter(Mandatory = $true)][string]$Path, [string]$Version = '0.1.3')
 $ErrorActionPreference = 'Stop'
 $package = (Resolve-Path -LiteralPath $Path).Path
 $manifest = Get-Content -LiteralPath (Join-Path $package 'PACKAGE_MANIFEST.json') -Raw | ConvertFrom-Json
