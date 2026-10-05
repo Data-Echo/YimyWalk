@@ -1,10 +1,12 @@
 using YimyWalk.App.Rendering;
 using YimyWalk.App.Settings;
+using YimyWalk.App.Startup;
 using YimyWalk.App.UI;
 using YimyWalk.App.Windows;
 using YimyWalk.Core.Characters;
 using YimyWalk.Core.Display;
 using YimyWalk.Core.Settings;
+using YimyWalk.Core.Startup;
 using YimyWalk.Core.Simulation;
 using System.Diagnostics;
 using System.Numerics;
@@ -144,6 +146,12 @@ internal sealed class AppHost : ApplicationContext
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
         var definitions = _catalog.Scan(root);
+        var startupDiagnostic = StartupDiagnostics.ValidateCharacters(
+            root,
+            definitions,
+            _catalog.LastFailures);
+        if (startupDiagnostic is not null)
+            throw new StartupFailureException(startupDiagnostic);
         ApplyDefinitions(definitions);
         _timer.Start();
         _lastTickTimestamp = Stopwatch.GetTimestamp();

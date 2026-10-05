@@ -1,6 +1,22 @@
-# 当前状态（2026-10-05，M4.2 双显示器真实验收）
+# 当前状态（2026-10-05，M4.2 发布包与启动自检）
 
-## M4.2 双显示器/DPI 实际结果（当前事实来源）
+## M4.2 发布包与启动自检实际结果（当前事实来源）
+
+- **代码已实现**：Core 新增 `StartupDiagnostics`，为角色根目录缺失、空目录和全部角色无效提供稳定错误码、原因和恢复方法；AppHost 在启动计时器前执行检查，Program 捕获启动失败并显示诊断，同时把摘要写入用户本地 `YimyWalk/startup-error.log`。`run-yimywalk.ps1` 在启动前检查 .NET 8 `Microsoft.NETCore.App`/`Microsoft.WindowsDesktop.App`、exe/dll/deps/runtimeconfig、`Characters` 和至少一个 `sprite.png`，不会联网、注册自启动、修改桌面文件或请求管理员权限。
+- **发布包已实现**：`scripts/build-yimywalk.ps1` 清理目标发布目录后 restore/test/publish，复制 `Characters/` 和 `THIRD_PARTY_NOTICES.md`，并生成 `PACKAGE_README.txt`、`PACKAGE_MANIFEST.json` 与 `PACKAGE_CHECKSUMS.txt`；`scripts/publish-yimywalk.ps1` 将同一流程输出到 `artifacts/publish/yimywalk-win-x64`。manifest 明确 x64、framework-dependent、.NET 8 Windows Desktop runtime、角色列表和默认安全边界。
+- **构建通过**：`scripts/build-yimywalk.ps1` 和 `scripts/publish-yimywalk.ps1` 均通过；发布包两次从相同输入生成的 `PACKAGE_CHECKSUMS.txt` SHA-256 为 `4D59633F38D30B2EB7B9BFECC5733218B15A96C81715D6FA446109DC4277B64B`，输出内容一致。
+- **核心测试通过**：`.tools/dotnet/dotnet.exe test YimyWalk.sln --configuration Release --no-restore` 通过 **89/89**，其中新增 `StartupDiagnosticsTests` 4 项；Core 仍未引用 WinForms 或桌面绘制对象。
+- **Windows 桌面已验证**：可见桌面上 `scripts/desktop-smoke.ps1 -Rounds 1 -Role slime` 通过，真实启动发布版宿主并完成 1/10/50/100 创建/清空、角色刷新成功/失败保留和资源计数回落；本轮 100 只清空后 `ACTIVE=0`、`WINDOWS=0`、`CACHE=0`、`USER=29`、`GDI=33`，Host Dispose 后 `USER=10`、`GDI=27`。另用 `run-yimywalk.ps1 -PublishPath artifacts/publish/yimywalk-win-x64` 启动发布包约 2 秒后由测试进程结束，入口预检通过。
+- **Windows 桌面未验证**：本任务没有重新执行已通过的双显示器 83/83 矩阵；负坐标显示器、物理拔插、睡眠唤醒、更长时间 CPU/内存曲线、权限受限会话和更高实例压力仍保持未验证。发布/核心/启动预检证据不能替代这些真实桌面验收。
+
+## M4.3 稳定性回归实际结果（2026-10-05）
+
+- **代码已实现**：未改变运行时行为；`tools/DesktopSmoke` 增加 `CPU_S` 累计处理器秒数输出，使长时资源记录同时包含 CPU、工作集、私有字节、托管堆、句柄、USER 和 GDI。输入 smoke 仍使用现有真实刷新、隐藏/恢复、清空和退出入口。
+- **构建与核心测试通过**：M4.2 发布脚本在 smoke 前构建 DesktopSmoke 为 0 警告/错误；完整 Core 测试仍为 89/89。M4.3 没有引入新的生产程序集依赖。
+- **Windows 桌面已验证**：`scripts/desktop-smoke.ps1 -Rounds 20 -Role slime` 在同一宿主进程完成 20 轮、160 次 CREATE 和 80 次 CLEAR；每次清空均为 `ACTIVE=0 WINDOWS=0 CACHE=0`，USER/GDI 回到 29/33，Host Dispose 后为 10/27。第 1 轮首个 CREATE 为 `CPU_S=0.438 WS=70,504,448 PRIVATE=19,070,976 HANDLES=352`，第 20 轮结束为 `CPU_S=55.234 WS=118,947,840 PRIVATE=63,967,232 HANDLES=364`。输入 smoke 在恢复默认气泡设置后连续两轮通过真实角色刷新、清空、托盘退出、气泡/食物/外部进程反馈和资源释放；原用户设置随后恢复，发布包运行前后清单哈希不变。完整趋势日志保存在 `artifacts/m43-stability-cpu.log`。
+- **Windows 桌面未验证**：20 轮显示工作集和私有字节仍有明显进程分配器增长，因此不能宣称长期无泄漏或流畅；更长时间/更高压力、权限受限会话、真实快捷方式、负坐标显示器、拔插显示器和睡眠唤醒仍未验证。第一次输入 smoke 因持久化 `dialogueEnabled=false` 直接断言失败，已记录为测试前置条件问题，未把该次失败改写为通过。
+
+## M4.2 双显示器/DPI 实际结果
 
 - **代码已实现**：`WindowsDisplayAdapter` 为每块屏幕读取独立 DPI；应用启动声明 `PerMonitorV2`；`DesktopWorldSurface` 按宠物坐标解析显示器缩放；`PetWindow` 在目标显示器上创建/调整尺寸并使用 `AutoScaleMode.Dpi`，跨 DPI 渲染尺寸和透明命中保持一致。新增 `tools/DesktopDisplaySmoke` 与 `scripts/desktop-display-smoke.ps1`，仍沿用一个宿主进程、一个宠物一个窗口的结构。
 - **构建通过**：`scripts/build-yimywalk.ps1` 通过；双屏 smoke 工具 x64 Release 构建 0 警告、0 错误。
@@ -11,7 +27,7 @@
 
 ## 下一条可执行任务
 
-继续 M4 稳定性回归：在不改变真实桌面配置的前提下，补做可执行的长时资源趋势/权限边界验证；若再次取得负坐标或拓扑变化环境，再运行对应真实桌面矩阵。真实快捷方式读写、自启动和系统设置修改仍不在当前范围。
+继续处理 M4.3 残余验证债务：获取更长时段 CPU/内存/句柄曲线和权限受限会话证据；若再次取得负坐标或拓扑变化环境，再运行对应真实桌面矩阵。真实快捷方式读写、自启动和系统设置修改仍不在当前范围。
 
 ## M4.1 实际结果
 
