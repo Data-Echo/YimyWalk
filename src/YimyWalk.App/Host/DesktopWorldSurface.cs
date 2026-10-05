@@ -32,6 +32,9 @@ internal sealed class DesktopWorldSurface : IWorldSurface
         }
     }
 
+    public WorldRect HorizontalTravelBounds
+        => GetSnapshot().HorizontalTravelBounds ?? WorkingArea;
+
     public WorldRect SpawnArea
     {
         get

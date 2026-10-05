@@ -34,6 +34,34 @@ public interface IWorldSurface
     WorldRect WorkingAreaForPoint(Vector2 point)
         => DisplayForPoint(point)?.WorkingArea ?? WorkingArea;
 
+    WorldRect HorizontalTravelBounds
+    {
+        get
+        {
+            var displays = DisplayProvider?.Displays;
+            if (displays is { Count: > 0 })
+            {
+                var left = float.PositiveInfinity;
+                var top = float.PositiveInfinity;
+                var right = float.NegativeInfinity;
+                var bottom = float.NegativeInfinity;
+                foreach (var display in displays)
+                {
+                    left = Math.Min(left, display.WorkingArea.Left);
+                    top = Math.Min(top, display.WorkingArea.Top);
+                    right = Math.Max(right, display.WorkingArea.Right);
+                    bottom = Math.Max(bottom, display.WorkingArea.Bottom);
+                }
+
+                if (float.IsFinite(left) && float.IsFinite(top)
+                    && float.IsFinite(right) && float.IsFinite(bottom) && right > left)
+                    return new WorldRect(left, top, right, bottom);
+            }
+
+            return WorkingArea;
+        }
+    }
+
     WorldRect SpawnArea => WorkingArea;
 
     SurfaceSelection SurfaceForPet(Vector2 footPosition, float footHalfWidth, Vector2 nextFootPosition)
