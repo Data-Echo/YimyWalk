@@ -19,7 +19,6 @@ internal sealed class WindowsDisplayAdapter
         try
         {
             var screens = Screen.AllScreens;
-            var scale = ReadScale(windowHandle);
             var displays = new List<DisplayInfo>(screens.Length);
             for (var index = 0; index < screens.Length; index++)
             {
@@ -33,7 +32,7 @@ internal sealed class WindowsDisplayAdapter
                     new DisplayId(id),
                     bounds,
                     workingArea,
-                    scale,
+                    ReadMonitorScale(screen),
                     screen.Primary));
             }
 
@@ -58,6 +57,24 @@ internal sealed class WindowsDisplayAdapter
 
     public float ScaleForWindow(IntPtr windowHandle)
         => ReadScale(windowHandle);
+
+    private static float ReadMonitorScale(Screen screen)
+    {
+        try
+        {
+            var center = new NativeMethods.Point(screen.Bounds.Left + screen.Bounds.Width / 2,
+                screen.Bounds.Top + screen.Bounds.Height / 2);
+            var monitor = MonitorFromPoint(center, 2 /* MONITOR_DEFAULTTONEAREST */);
+            if (monitor != IntPtr.Zero && GetDpiForMonitor(monitor, 0 /* MDT_EFFECTIVE_DPI */, out var x, out _) == 0 && x > 0)
+                return x / (float)DefaultDpi;
+        }
+        catch (EntryPointNotFoundException) { }
+        catch (DllNotFoundException) { }
+        return ReadScale(IntPtr.Zero);
+    }
+
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(NativeMethods.Point point, uint flags);
+    [DllImport("shcore.dll")] private static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
 
     private static float ReadScale(IntPtr windowHandle)
     {

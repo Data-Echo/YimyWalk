@@ -62,6 +62,9 @@ internal sealed class DesktopWorldSurface : IWorldSurface
 
     public float ScaleForWindow(IntPtr windowHandle) => _adapter.ScaleForWindow(windowHandle);
 
+    public float ScaleForPoint(Vector2 point)
+        => GetSnapshot().Resolve(point)?.Scale ?? 1f;
+
     public void RefreshNow()
     {
         _snapshot = _adapter.Capture();

@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
@@ -10,5 +11,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\YimyWalk.Core\YimyWalk.Core.csproj" />
+    <InternalsVisibleTo Include="DesktopDisplaySmoke" />
   </ItemGroup>
 </Project>

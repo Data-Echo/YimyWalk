@@ -1,4 +1,17 @@
-# 当前状态（2026-10-05，M4.1 角色作者材料）
+# 当前状态（2026-10-05，M4.2 双显示器真实验收）
+
+## M4.2 双显示器/DPI 实际结果（当前事实来源）
+
+- **代码已实现**：`WindowsDisplayAdapter` 为每块屏幕读取独立 DPI；应用启动声明 `PerMonitorV2`；`DesktopWorldSurface` 按宠物坐标解析显示器缩放；`PetWindow` 在目标显示器上创建/调整尺寸并使用 `AutoScaleMode.Dpi`，跨 DPI 渲染尺寸和透明命中保持一致。新增 `tools/DesktopDisplaySmoke` 与 `scripts/desktop-display-smoke.ps1`，仍沿用一个宿主进程、一个宠物一个窗口的结构。
+- **构建通过**：`scripts/build-yimywalk.ps1` 通过；双屏 smoke 工具 x64 Release 构建 0 警告、0 错误。
+- **核心测试通过**：`scripts/test-yimywalk.ps1` 通过 **85/85**；Core 未引用 WinForms 或桌面绘制对象。
+- **Windows 桌面已验证**：在 Windows 11 Home 10.0.26200、x64、16 logical CPUs、Intel Core i5-12500H 的已解锁桌面上，`scripts/desktop-display-smoke.ps1 -Rounds 3` 返回 `RESULT PASS CHECKS=83 FAILURES=0`。`DISPLAY1` 为 1920×1080、工作区 1920×1020、DPI 120（125%）；右侧 `DISPLAY2` 为 2560×1440、工作区 2560×1392、DPI 96（100%）。cat/slime 在两块屏幕上的生成、掉落、落地、行走、跳跃、透明区域穿透、实体命中、拖拽释放、焦点保持、global scale=2，以及双向跨屏拖拽均通过；3 轮双屏创建/清空后活动实例、窗口和 cache 均归零。
+- **资源趋势**：最终三轮清空 GDI 为 41、46、51，USER 为 15，句柄为 323、324、324；工作集/私有字节保留进程分配器趋势。`AutoScaleMode.Dpi` 将跨 DPI 创建/销毁的 GDI 增长从早期约每轮 +40 降到本轮约 +5，但仍不能据此宣称无泄漏或 100 只长期流畅。完整日志：`artifacts/dual-display-final.log`。
+- **Windows 桌面未验证**：本次拓扑没有负坐标屏幕，因此负坐标布局未验证；物理断开/重连、睡眠/唤醒、任务栏布局变化、更长时间 CPU/内存曲线和更高实例压力未执行。它们继续保持未验证，不能用 Core 或普通窗口动画替代。
+
+## 下一条可执行任务
+
+继续 M4 稳定性回归：在不改变真实桌面配置的前提下，补做可执行的长时资源趋势/权限边界验证；若再次取得负坐标或拓扑变化环境，再运行对应真实桌面矩阵。真实快捷方式读写、自启动和系统设置修改仍不在当前范围。
 
 ## M4.1 实际结果
 

@@ -30,6 +30,10 @@ internal sealed class PetWindow : Form
         _cacheDefinitionRetained = true;
         _globalScale = Math.Clamp(globalScale, 0.1f, 8f);
         FormBorderStyle = FormBorderStyle.None;
+        // The window size is supplied in device pixels by the renderer. Dpi
+        // scaling keeps WinForms from applying its default Font-based
+        // AutoScale path each time a pet is created on another monitor.
+        AutoScaleMode = AutoScaleMode.Dpi;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
@@ -83,20 +87,22 @@ internal sealed class PetWindow : Form
     public void RefreshFrame()
     {
         if (IsDisposed) return;
-        if (IsHandleCreated && _desktopSurface is not null)
+        if (_desktopSurface is not null)
         {
-            var nextDpiScale = _desktopSurface.ScaleForWindow(Handle);
+            var nextDpiScale = _desktopSurface.ScaleForPoint(Instance.FootPosition);
             if (float.IsFinite(nextDpiScale) && nextDpiScale > 0)
                 _dpiScale = nextDpiScale;
         }
         var frame = Instance.Definition.SelectFrame(Instance.GetFrameKind(), Instance.AnimationTime);
         var scale = EffectiveScale;
         _surface = _cache.Get(Instance.Definition, frame, frame.Mirrored, scale);
-        ClientSize = _surface.Bitmap.Size;
         var x = (int)Math.Round(Instance.FootPosition.X - Instance.Definition.Anchor.X * scale);
         var y = (int)Math.Round(Instance.FootPosition.Y - Instance.Definition.Anchor.Y * scale);
         var location = new Point(x, y);
+        // Set the target monitor before creating/resizing the native handle so
+        // WinForms can apply that monitor's DPI instead of the primary screen's.
         Location = location;
+        ClientSize = _surface.Bitmap.Size;
         if (IsHandleCreated)
             LayeredWindowRenderer.Present(Handle, _surface.Bitmap, location);
     }
