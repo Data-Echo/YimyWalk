@@ -25,6 +25,7 @@ public sealed class PetInstance
     public bool IsDragging => State == PetState.Dragged;
     public float Hunger { get; private set; }
     public float Boredom { get; private set; }
+    public PetBehaviorOverrides BehaviorOverrides { get; set; } = PetBehaviorOverrides.Inherit;
 
     public void StartWalking(FacingDirection direction)
     {

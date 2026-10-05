@@ -10,6 +10,8 @@ public sealed class PetEngine
     private readonly IRandomSource _random;
     public bool HungerEnabled { get; set; } = true;
     public float NeedRate { get; set; } = 1f;
+    public bool DefaultWalkEnabled { get; set; } = true;
+    public float ActivityRate { get; set; } = 1f;
 
     public PetEngine(IWorldSurface surface, IRandomSource random)
     {
@@ -65,6 +67,13 @@ public sealed class PetEngine
             return;
         }
 
+        if (pet.State == PetState.Walk && !pet.BehaviorOverrides.ResolveWalkEnabled(DefaultWalkEnabled))
+        {
+            pet.State = PetState.Idle;
+            pet.StateTime = 0;
+            pet.Velocity = Vector2.Zero;
+        }
+
         switch (pet.State)
         {
             case PetState.Jump:
@@ -87,8 +96,12 @@ public sealed class PetEngine
                 break;
             case PetState.Idle:
                 pet.Velocity = Vector2.Zero;
-                if (pet.StateTime >= pet.Definition.Defaults.IdleSecondsMax
-                    || (pet.StateTime >= pet.Definition.Defaults.IdleSecondsMin && _random.NextDouble() >= 0.25))
+                var activityRate = pet.BehaviorOverrides.ResolveActivityRate(ActivityRate);
+                var idleMin = Math.Max(0, pet.Definition.Defaults.IdleSecondsMin) / activityRate;
+                var idleMax = Math.Max(idleMin, pet.Definition.Defaults.IdleSecondsMax) / activityRate;
+                if (pet.BehaviorOverrides.ResolveWalkEnabled(DefaultWalkEnabled)
+                    && (pet.StateTime >= idleMax
+                        || (pet.StateTime >= idleMin && _random.NextDouble() >= 0.25)))
                 {
                     // The random choice is deliberately infrequent and deterministic
                     // under a test source; the third row is never an animation loop.

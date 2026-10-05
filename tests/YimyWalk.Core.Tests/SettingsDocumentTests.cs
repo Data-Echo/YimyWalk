@@ -14,6 +14,8 @@ public sealed class SettingsDocumentTests
         Assert.Equal("cat", settings.SelectedRoleId);
         Assert.Equal(1f, settings.Scale);
         Assert.Equal(1f, settings.ActivityRate);
+        Assert.True(settings.DefaultWalkEnabled);
+        Assert.True(settings.DefaultDialogueEnabled);
         Assert.True(settings.DialogueEnabled);
         Assert.True(settings.HungerEnabled);
         Assert.Equal(1f, settings.HungerRate);

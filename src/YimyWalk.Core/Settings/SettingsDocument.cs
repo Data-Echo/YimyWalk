@@ -16,6 +16,8 @@ public sealed record SettingsDocument
     public string SelectedRoleId { get; init; } = "cat";
     public float Scale { get; init; } = 1f;
     public float ActivityRate { get; init; } = 1f;
+    public bool DefaultWalkEnabled { get; init; } = true;
+    public bool DefaultDialogueEnabled { get; init; } = true;
     public bool DialogueEnabled { get; init; } = true;
     public bool HungerEnabled { get; init; } = true;
     public float HungerRate { get; init; } = 1f;

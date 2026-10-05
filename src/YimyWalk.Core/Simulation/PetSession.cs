@@ -21,6 +21,8 @@ public sealed class PetSession : IDisposable
     public bool IsPaused { get; private set; }
     public bool HungerEnabled { get => _engine.HungerEnabled; set => _engine.HungerEnabled = value; }
     public float NeedRate { get => _engine.NeedRate; set => _engine.NeedRate = Math.Clamp(value, 0f, 4f); }
+    public bool DefaultWalkEnabled { get => _engine.DefaultWalkEnabled; set => _engine.DefaultWalkEnabled = value; }
+    public float ActivityRate { get => _engine.ActivityRate; set => _engine.ActivityRate = Math.Clamp(value, 0.1f, 4f); }
     public int ActiveCount => _instances.Count;
     public IWorldSurface Surface => _engine.Surface;
     public IReadOnlyCollection<PetInstance> Instances => _instances.Values.Select(value => value.Pet).ToArray();
