@@ -5,7 +5,7 @@
 - **开发分支**：`codex/bootstrap` 保留完整源码、Core 测试、Desktop smoke、作者工具、上游审计快照和阶段文档。
 - **标准主分支**：`main` 只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
 - **主分支可构建性**：精简后的 `main` 使用只含 `YimyWalk.Core` 与 `YimyWalk.App` 的产品解决方案；在不复制 `.tools/` 且不含测试工程的工作树中，使用外部 .NET 8 SDK 完成 restore/build/publish，脚本会明确跳过不存在的测试项目。
-- **Release 产物**：本次发布为 `v0.1.2`，入口为自包含单文件 `YimyWalk.exe`；发布包同时包含 `Characters/`、许可证、版本说明、manifest 和 SHA-256 清单。
+- **Release 产物**：本次发布为 `v0.1.2`，入口为自包含单文件 `YimyWalk.exe`；发布包同时包含 `Characters/`、许可证、版本说明、manifest 和 SHA-256 清单。本地压缩包位于 `artifacts/release/v0.1.2/`，包含源码包、Windows x64 包和 `SHA256SUMS.txt`。
 - **远程状态**：已推送 `main`、`codex/bootstrap` 和 `v0.1.2` 标签到 `origin`；没有修改系统设置、开机启动或真实桌面文件，也没有创建在线 Release 页面。
 
 ## M4.2 发布包与启动自检实际结果（当前事实来源）
@@ -15,7 +15,7 @@
 - **构建通过**：`scripts/build-yimywalk.ps1` 已通过；`YimyWalk.exe` 文件版本为 `0.1.2.0`，包清单标记 `selfContained=true`，发布目录 12 个文件、11 个 SHA-256 校验项，`scripts/test-release-package.ps1` 通过。
 - **核心测试通过**：`.tools/dotnet/dotnet.exe test YimyWalk.sln --configuration Release --no-restore` 通过 **89/89**，其中新增 `StartupDiagnosticsTests` 4 项；Core 仍未引用 WinForms 或桌面绘制对象。
 - **Windows 桌面已验证**：可见桌面上 `scripts/desktop-smoke.ps1 -Rounds 1 -Role slime` 通过，真实启动发布版宿主并完成 1/10/50/100 创建/清空、角色刷新成功/失败保留和资源计数回落；本轮 100 只清空后 `ACTIVE=0`、`WINDOWS=0`、`CACHE=0`、`USER=29`、`GDI=33`，Host Dispose 后 `USER=10`、`GDI=27`。另用 `run-yimywalk.ps1 -PublishPath artifacts/publish/yimywalk-win-x64` 启动发布包约 2 秒后由测试进程结束，入口预检通过。
-- **Windows 桌面未验证**：本任务没有重新执行已通过的双显示器 83/83 矩阵；负坐标显示器、物理拔插、睡眠唤醒、更长时间 CPU/内存曲线、权限受限会话和更高实例压力仍保持未验证。发布/核心/启动预检证据不能替代这些真实桌面验收。
+- **Windows 桌面未验证**：本任务没有重新执行已通过的双显示器 83/83 矩阵；负坐标显示器、物理拔插、睡眠唤醒、更长时间 CPU/内存曲线、权限受限会话和更高实例压力仍保持未验证。本次输入 smoke 因当前用户已有 `dialogueEnabled=false`，在“新建宠物出现对话气泡”的前置断言处失败，未计为通过，也未修改用户设置。发布/核心/启动预检证据不能替代这些真实桌面验收。
 
 ## M4.3 稳定性回归实际结果（2026-10-05）
 
