@@ -2,10 +2,10 @@
 
 ## 本地发布整理（2026-10-05）
 
-- **开发分支**：`codex/bootstrap` 保留完整源码、Core 测试、Desktop smoke、作者工具、上游审计快照和阶段文档；当前本地提交为 `461a69b build: prepare versioned local release package`，此前 M4.2/M4.3 提交为 `8cda88a`。
-- **标准主分支**：已从该开发基线创建本地 `main`，提交 `58516fa release: create minimal main product branch`，并创建本地标签 `v0.1.0`。主分支只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
+- **开发分支**：`codex/bootstrap` 保留完整源码、Core 测试、Desktop smoke、作者工具、上游审计快照和阶段文档；当前图标与版本提交为 `d7f580c feat: add YimyWalk application icon`，此前发布整理提交为 `461a69b`。
+- **标准主分支**：已从该开发基线创建本地 `main`，当前提交 `bdaf937 feat: add YimyWalk application icon`，并创建本地标签 `v0.1.1`（`v0.1.0` 保留为上一版标签）。主分支只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
 - **主分支可构建性**：精简后的 `main` 使用只含 `YimyWalk.Core` 与 `YimyWalk.App` 的产品解决方案；在不复制 `.tools/` 且不含测试工程的工作树中，使用外部 .NET 8 SDK 完成 restore/build/publish，脚本会明确跳过不存在的测试项目。
-- **Release 产物**：`artifacts/release/v0.1.0/YimyWalk-v0.1.0-source.zip` 与 `artifacts/release/v0.1.0/YimyWalk-v0.1.0-win-x64.zip`；源码包不含开发/测试/上游目录，二进制包解压后通过 17 个文件、16 个 SHA-256 校验项检查。汇总校验见同目录 `SHA256SUMS.txt`。
+- **Release 产物**：`artifacts/release/v0.1.1/YimyWalk-v0.1.1-source.zip` 与 `artifacts/release/v0.1.1/YimyWalk-v0.1.1-win-x64.zip`；源码包不含开发/测试/上游目录，二进制包解压后通过 17 个文件、16 个 SHA-256 校验项检查。汇总校验见同目录 `SHA256SUMS.txt`。本版新增 `Resources/icon_yimy.png`（512×512）和含 7 个尺寸的 `Resources/yimywalk.ico`，并已从发布 EXE 提取验证。
 - **远程边界**：没有 push，没有修改远程默认分支，没有创建在线 Release；`origin` 和 `upstream` 均保持不变。
 
 ## M4.2 发布包与启动自检实际结果（当前事实来源）
