@@ -81,6 +81,42 @@ public sealed class PetPhysicsTests
     }
 
     [Fact]
+    public void AirborneTossWrapsFromGlobalRightEdgeToGlobalLeftEdge()
+    {
+        var display = new WorldRect(400, 0, 500, 100);
+        var travelBounds = new WorldRect(0, 0, 500, 100);
+        var pet = NewPet(new Vector2(490, 20));
+        var engine = new PetEngine(new TestSurface(display, travelBounds), new FixedRandom());
+
+        engine.BeginDrag(pet);
+        engine.ReleaseDrag(pet, new Vector2(1200, 0));
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(110, pet.FootPosition.X, 3);
+        Assert.Equal(35, pet.FootPosition.Y, 3);
+        Assert.Equal(1200, pet.Velocity.X, 3);
+        Assert.Equal(PetState.Fall, pet.State);
+    }
+
+    [Fact]
+    public void AirborneTossWrapsFromGlobalLeftEdgeToGlobalRightEdge()
+    {
+        var display = new WorldRect(0, 0, 100, 100);
+        var travelBounds = new WorldRect(0, 0, 500, 100);
+        var pet = NewPet(new Vector2(10, 20));
+        var engine = new PetEngine(new TestSurface(display, travelBounds), new FixedRandom());
+
+        engine.BeginDrag(pet);
+        engine.ReleaseDrag(pet, new Vector2(-1200, 0));
+        engine.Tick(pet, 0.1);
+
+        Assert.Equal(390, pet.FootPosition.X, 3);
+        Assert.Equal(35, pet.FootPosition.Y, 3);
+        Assert.Equal(-1200, pet.Velocity.X, 3);
+        Assert.Equal(PetState.Fall, pet.State);
+    }
+
+    [Fact]
     public void WalkingCanCrossTheGapBetweenDisplayWorkingAreas()
     {
         var left = new DisplayInfo(new DisplayId("LEFT"), new WorldRect(0, 0, 100, 100), new WorldRect(0, 0, 100, 100), 1f, true);
@@ -240,9 +276,10 @@ public sealed class PetPhysicsTests
     private static PetEngine NewEngine()
         => new(new TestSurface(Area), new FixedRandom());
 
-    private sealed class TestSurface(WorldRect area) : IWorldSurface
+    private sealed class TestSurface(WorldRect area, WorldRect? travelBounds = null) : IWorldSurface
     {
         public WorldRect WorkingArea { get; set; } = area;
+        public WorldRect HorizontalTravelBounds { get; } = travelBounds ?? area;
         public bool IsValid { get; set; } = true;
     }
 
