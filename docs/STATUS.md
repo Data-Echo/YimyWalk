@@ -6,7 +6,7 @@
 - **标准主分支**：`main` 只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
 - **主分支可构建性**：精简后的 `main` 使用只含 `YimyWalk.Core` 与 `YimyWalk.App` 的产品解决方案；在不复制 `.tools/` 且不含测试工程的工作树中，使用外部 .NET 8 SDK 完成 restore/build/publish，脚本会明确跳过不存在的测试项目。
 - **Release 产物**：本次发布为 `v0.1.2`，入口为自包含单文件 `YimyWalk.exe`；发布包同时包含 `Characters/`、许可证、版本说明、manifest 和 SHA-256 清单。
-- **远程状态**：本次验证完成后将推送 `main`、`codex/bootstrap` 和 `v0.1.2` 标签；不会修改系统设置、开机启动或真实桌面文件。
+- **远程状态**：已推送 `main`、`codex/bootstrap` 和 `v0.1.2` 标签到 `origin`；没有修改系统设置、开机启动或真实桌面文件，也没有创建在线 Release 页面。
 
 ## M4.2 发布包与启动自检实际结果（当前事实来源）
 
