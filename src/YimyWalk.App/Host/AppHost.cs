@@ -20,6 +20,7 @@ internal sealed class AppHost : ApplicationContext
     private readonly FrameSurfaceCache _surfaceCache = new();
     private readonly CharacterCatalog _catalog = new();
     private readonly SettingsStore _settingsStore = new();
+    private readonly SettingsSaveCoordinator _settingsSave;
     private readonly PetSession _session;
     private readonly System.Windows.Forms.Timer _timer;
     private readonly BatchCreationQueue _batch;
@@ -46,6 +47,7 @@ internal sealed class AppHost : ApplicationContext
         _session.InstanceRemoved += OnInstanceRemoved;
         _timer = new System.Windows.Forms.Timer { Interval = 16 };
         _timer.Tick += (_, _) => Tick();
+        _settingsSave = new SettingsSaveCoordinator(SaveSettingsCore);
         MainForm = new Form { ShowInTaskbar = false, Opacity = 0, Width = 1, Height = 1 };
         MainForm.Load += (_, _) => MainForm.Hide();
         _batch = new BatchCreationQueue(() =>
@@ -56,6 +58,7 @@ internal sealed class AppHost : ApplicationContext
             return _session.Create(definition.Id);
         });
         _manager = new ManagerForm(this);
+        _settingsSave.Changed += OnSettingsSaveChanged;
         _tray = new TrayIconHost(this);
     }
 
@@ -68,6 +71,47 @@ internal sealed class AppHost : ApplicationContext
     public SettingsLoadResult SettingsLoad => _settingsLoad;
     public string SelectedRoleId => _settings.SelectedRoleId;
     public float GlobalScale => _settings.Scale;
+    public SettingsSaveState SettingsSaveState => _settingsSave.State;
+    public string? SettingsSaveError => _settingsSave.Error;
+    public bool DefaultWalkEnabled
+    {
+        get => _session.DefaultWalkEnabled;
+        set
+        {
+            if (_session.DefaultWalkEnabled == value) return;
+            _session.DefaultWalkEnabled = value;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { DefaultWalkEnabled = value };
+                SaveSettings();
+            }
+        }
+    }
+    public float ActivityRate
+    {
+        get => _session.ActivityRate;
+        set
+        {
+            var bounded = Math.Clamp(value, SettingsDocument.MinActivityRate, SettingsDocument.MaxActivityRate);
+            if (Math.Abs(_session.ActivityRate - bounded) < 0.0001f) return;
+            _session.ActivityRate = bounded;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { ActivityRate = bounded };
+                SaveSettings(debounce: true);
+            }
+        }
+    }
+    public bool DefaultDialogueEnabled
+    {
+        get => _settings.DefaultDialogueEnabled;
+        set
+        {
+            if (_settings.DefaultDialogueEnabled == value) return;
+            _settings = _settings with { DefaultDialogueEnabled = value };
+            if (!_disposed && CharacterRoot.Length > 0) SaveSettings();
+        }
+    }
     public IDisplayProvider DisplayProvider => _surface.DisplayProvider;
     public IReadOnlyList<DisplayInfo> Displays => _surface.Snapshot.Displays;
     public bool WindowLandingEnabled
@@ -142,6 +186,8 @@ internal sealed class AppHost : ApplicationContext
         _surface.WindowLandingEnabled = _settings.WindowLandingEnabled;
         _session.HungerEnabled = _settings.HungerEnabled;
         _session.NeedRate = _settings.HungerRate;
+        _session.DefaultWalkEnabled = _settings.DefaultWalkEnabled;
+        _session.ActivityRate = _settings.ActivityRate;
         var root = Path.Combine(AppContext.BaseDirectory, "Characters");
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
@@ -221,6 +267,8 @@ internal sealed class AppHost : ApplicationContext
         _settings = _settings with { SelectedRoleId = id };
         SaveSettings();
     }
+
+    public void RetrySettingsSave() => _settingsSave.Flush();
 
     public void ShowManager()
     {
@@ -318,6 +366,7 @@ internal sealed class AppHost : ApplicationContext
     private void PublishDialogue(PetInstance instance, string group)
     {
         if (!DialogueEnabled) return;
+        if (!instance.BehaviorOverrides.ResolveDialogueEnabled(DefaultDialogueEnabled)) return;
         var result = _dialogue.TryPublish(instance, group, _dialogueClock);
         if (!result.Accepted || result.Bubble is not { } bubble) return;
         if (!_windows.TryGet(instance.InstanceId, out var petWindow) || petWindow is null) return;
@@ -376,27 +425,39 @@ internal sealed class AppHost : ApplicationContext
         return "Settings: loaded";
     }
 
-    private void SaveSettings()
+    private void SaveSettings(bool debounce = false)
     {
-        try
+        if (!_disposed && CharacterRoot.Length > 0)
+            _settingsSave.Request(debounce);
+    }
+
+    private void SaveSettingsCore()
+    {
+        _settingsStore.Save(_settings);
+        _settingsLoad = new SettingsLoadResult(_settings, UsedDefaults: false, UsedBackup: false, null);
+    }
+
+    private void OnSettingsSaveChanged()
+    {
+        if (_disposed) return;
+        var status = _settingsSave.State switch
         {
-            _settingsStore.Save(_settings);
-            _settingsLoad = new SettingsLoadResult(_settings, UsedDefaults: false, UsedBackup: false, null);
-            if (!_disposed) _manager.SetSettingsStatus("Settings: saved");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            if (!_disposed) _manager.SetSettingsStatus($"Settings: save failed ({ex.Message})");
-        }
+            SettingsSaveState.Applied => "Settings: applied; saving",
+            SettingsSaveState.Saving => "Settings: saving",
+            SettingsSaveState.Saved => "Settings: saved",
+            SettingsSaveState.Failed => $"Settings: applied for this run; save failed ({_settingsSave.Error})",
+            _ => "Settings: unknown"
+        };
+        _manager.SetSettingsStatus(status);
     }
 
     protected override void Dispose(bool disposing)
     {
         if (_disposed) return;
-        _disposed = true;
         if (disposing)
         {
-            if (CharacterRoot.Length > 0) SaveSettings();
+            if (CharacterRoot.Length > 0) _settingsSave.Flush();
+            _disposed = true;
             _timer.Stop();
             _timer.Dispose();
             _batch.Dispose();
@@ -410,6 +471,7 @@ internal sealed class AppHost : ApplicationContext
             _windows.Dispose();
             _surfaceCache.Dispose();
             _surface.Dispose();
+            _settingsSave.Dispose();
             MainForm?.Dispose();
         }
         base.Dispose(disposing);

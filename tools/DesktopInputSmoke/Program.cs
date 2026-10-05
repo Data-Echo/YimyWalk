@@ -22,10 +22,22 @@ var app = Assembly.Load("YimyWalk.App");
 var hostType = app.GetType("YimyWalk.App.Host.AppHost", throwOnError: true)!;
 var host = Activator.CreateInstance(hostType, nonPublic: true)!;
 var hostDisposed = false;
+var originalDialogueEnabled = true;
 
 try
 {
     Invoke(hostType, host, "Start");
+    Require(Property(host, "DefaultWalkEnabled") is bool, "global default walk setting exists");
+    Require(Property(host, "DefaultDialogueEnabled") is bool, "global default dialogue setting exists");
+    Require(Property(host, "DialogueEnabled") is bool, "global dialogue gate exists");
+    Require(Property(host, "SettingsSaveState") is not null, "global save status exists");
+    Console.WriteLine("SETTINGS CONTRACT=PASS");
+    originalDialogueEnabled = (bool)Property(host, "DialogueEnabled");
+    if (!originalDialogueEnabled)
+    {
+        hostType.GetProperty("DialogueEnabled")!.SetValue(host, true);
+        Pump(50);
+    }
     LogDisplays(host);
     Invoke(hostType, host, "CreateMany", "cat", 1);
     Pump(100);
@@ -319,6 +331,11 @@ try
         Pump(100);
     }
 
+    if (!originalDialogueEnabled)
+    {
+        hostType.GetProperty("DialogueEnabled")!.SetValue(host, false);
+        Pump(50);
+    }
     ClickTrayMenuItem((NotifyIcon)icon, "退出");
     Pump(50);
     if (host is IDisposable exitedHost) exitedHost.Dispose();
@@ -331,6 +348,8 @@ finally
     Native.MouseUp();
     if (!hostDisposed)
     {
+        if (!originalDialogueEnabled)
+            hostType.GetProperty("DialogueEnabled")?.SetValue(host, false);
         if (host is IDisposable disposable) disposable.Dispose();
         hostDisposed = true;
     }
