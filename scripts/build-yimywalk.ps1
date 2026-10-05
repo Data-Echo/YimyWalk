@@ -50,7 +50,10 @@ try {
     if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
     New-Item -ItemType Directory -Path $publish -Force | Out-Null
 
-    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained true --no-restore -p:Platform=x64 -p:Version=$Version -p:VersionPrefix=$Version -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$publish\"
+    # .NET 8 single-file compression emits a different compressed stream on
+    # repeated publishes. Keep the executable byte-reproducible; the release
+    # ZIP still provides transport compression.
+    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained true --no-restore -p:Platform=x64 -p:Version=$Version -p:VersionPrefix=$Version -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=false -p:PublishDir="$publish\"
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
 
     $publishedAppHost = Join-Path $publish 'YimyWalk.App.exe'
