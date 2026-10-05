@@ -4,10 +4,10 @@
 
 - **代码实现**：`PetEngine` 让空中水平运动复用 `IWorldSurface.HorizontalTravelBounds`。越过全局右边界从左侧重新出现，越过全局左边界从右侧重新出现；垂直重力、水平速度和状态连续。表面选择使用循环后的投影坐标，落地仍使用实际显示器或窗口表面高度。
 - **Core 测试通过**：完整 Core 测试 **96/96** 通过，新增右向和左向拖拽丢出循环回归测试。
-- **构建通过**：`scripts/build-yimywalk.ps1 -Version 0.1.5` 通过，生成 self-contained single-file `YimyWalk.exe`；`scripts/test-release-package.ps1 -Version 0.1.5` 通过（12 个文件、11 个 SHA-256 校验项）。
+- **构建通过**：`scripts/build-yimywalk.ps1 -Version 0.1.5` 通过，生成 self-contained single-file `YimyWalk.exe`；关闭 .NET 单文件压缩以保证重复 publish 的可复现字节；两次 clean publish 的 `YimyWalk.exe` 哈希一致，`scripts/test-release-package.ps1 -Version 0.1.5` 通过（12 个文件、11 个 SHA-256 校验项）。
 - **Windows 桌面已验证**：`scripts/desktop-smoke.ps1 -Targeted -Rounds 1 -Role cat` 在当前真实双显示器拓扑通过；最大化窗口过滤、跨屏行走和新增 `CROSS-DISPLAY TOSS ... PASS` 均通过，随后角色刷新及 1/10/50/100 创建/清空、资源回落也通过。
 - **Windows 桌面未验证**：本轮未重复 83/83 双屏矩阵；负坐标布局、物理拔插、睡眠唤醒、长期 CPU/内存/句柄趋势、权限受限会话及真实任务栏配置变化仍未验证。`desktop-input-smoke.ps1` 本轮因当前用户设置使气泡关闭，在“created pet shows a dialogue bubble”处提前退出，不能作为本功能通过证据。
-- **发布状态**：`codex/bootstrap` 待提交本轮实现；完成提交后同步 `main` 并制作 `v0.1.5` 发布归档。应用继续不联网、不自启动、不请求管理员权限、不修改真实桌面文件。
+- **发布状态**：`codex/bootstrap` 实现与发布脚本已提交并推送；`main` 已生成精简产品树、v0.1.5 标签和源码/Windows x64 归档，待远程同步。应用继续不联网、不自启动、不请求管理员权限、不修改真实桌面文件。
 
 # 当前状态（2026-10-05，v0.1.4 EXE 发布包）
 
@@ -254,4 +254,3 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 ## 下一阶段
 
 已写入 `docs/superpowers/plans/2026-10-05-m4-stabilization.md`。下一条可执行任务是 M4.1：整理角色作者材料、校验入口和发布包自检；随后再处理真实验收中发现的稳定性问题。第二显示器和真实快捷方式继续作为单独的未验证/后续项目。
-
