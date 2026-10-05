@@ -30,19 +30,19 @@
 **Files:**
 - Modify: `src/YimyWalk.Core/Simulation/PetEngine.cs`
 
-- [ ] **Step 1: Pass the global travel span through projection and integration**
+- [x] **Step 1: Pass the global travel span through projection and integration**
 
   Read `Surface.HorizontalTravelBounds` once in `Tick`, pass it to `GetNextFootPosition`, and pass it to every airborne integration branch.
 
-- [ ] **Step 2: Add a bounded horizontal wrap helper**
+- [x] **Step 2: Add a bounded horizontal wrap helper**
 
   For a positive span width, add or subtract the width until the X coordinate is inside `[Left, Right]`. For a non-positive width, clamp to the current area as the fallback.
 
-- [ ] **Step 3: Use wrapped projected and committed X coordinates**
+- [x] **Step 3: Use wrapped projected and committed X coordinates**
 
   Apply the helper to airborne projected positions before `SurfaceForPet`, then use it in `IntegrateAirborne`. Preserve horizontal velocity and use the selected area bottom when landing.
 
-- [ ] **Step 4: Run focused tests and the full Core suite**
+- [x] **Step 4: Run focused tests and the full Core suite**
 
   Run the focused filter, then `\.tools\dotnet\dotnet.exe test YimyWalk.sln --configuration Release --no-restore`. Expected result: all tests pass, including the existing window-surface and walking-wrap tests.
 
@@ -52,14 +52,14 @@
 - Modify: `docs/STATUS.md`
 - Create: release artifacts under `artifacts/` only
 
-- [ ] **Step 1: Run the release build and publish/package validation**
+- [x] **Step 1: Run the release build and publish/package validation**
 
   Run `scripts/build-yimywalk.ps1`, then the existing release package validation against a fresh publish directory. Confirm the executable, roles, licenses, and manifest remain present.
 
-- [ ] **Step 2: Run available Windows targeted smoke**
+- [x] **Step 2: Run available Windows targeted smoke**
 
   Run the targeted smoke once on the available unlocked desktop. Record whether the drag path crosses a real display seam; leave negative-coordinate, physical disconnect, sleep/resume, and long-running resource scenarios marked as unverified unless directly observed.
 
-- [ ] **Step 3: Update status and inspect the diff**
+- [x] **Step 3: Update status and inspect the diff**
 
   Record code, Core, build/package, and Windows smoke status separately in `docs/STATUS.md`, then run `git diff --check` and review the changed files.

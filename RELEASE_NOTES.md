@@ -1,3 +1,17 @@
+# YimyWalk v0.1.5
+
+## Included
+
+- Dragged pets now wrap horizontally across the global display span while airborne. A toss that crosses the right edge re-enters from the left, and the reverse direction behaves the same while preserving flight velocity and vertical motion.
+- Surface selection uses the wrapped projected position so a cross-display toss can complete its landing on the destination display floor.
+- Core regression tests cover both wrap directions; the targeted Windows smoke validates the behavior against the current two-display topology.
+
+## Requirements and boundaries
+
+- Windows x64. The release executable embeds the .NET 8 runtime.
+- No network access, startup registration, administrator privileges, or real desktop-file operations.
+- Negative-coordinate monitors, physical monitor hot-plug, sleep/wake, restricted-permission sessions, and long-duration resource trends remain unverified.
+
 # YimyWalk v0.1.4
 
 ## Included

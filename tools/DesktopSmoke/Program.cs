@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Numerics;
 using System.Windows.Forms;
+using YimyWalk.Core.Simulation;
 
 var rounds = args.Length == 0 ? 1 : int.TryParse(args[0], out var parsed) && parsed > 0 && parsed <= 20 ? parsed : throw new ArgumentException("Rounds must be between 1 and 20.");
 var role = args.Length < 2 ? "cat" : args[1];
@@ -161,6 +162,28 @@ if (targetedRequested)
         if (!reachedTarget)
             throw new InvalidOperationException("pet did not walk from the first display into the second display");
         Console.WriteLine($"CROSS-DISPLAY WALK SOURCE_RIGHT={horizontalPair.Source.Right:0} TARGET_LEFT={horizontalPair.Target.Left:0} PASS");
+
+        var surface = (IWorldSurface)session.GetType().GetProperty("Surface")!.GetValue(session)!;
+        var tossStart = new Vector2(horizontalPair.Target.Right - 1, horizontalPair.Target.Bottom - 200);
+        var tossPet = (object)createAt.Invoke(session, new object[] { "cat", tossStart })!;
+        var tossEngine = new PetEngine(surface, new FixedRandom());
+        tossEngine.BeginDrag((YimyWalk.Core.Simulation.PetInstance)tossPet);
+        tossEngine.ReleaseDrag((YimyWalk.Core.Simulation.PetInstance)tossPet, new Vector2(PetEngine.MaxTossSpeed, 0));
+        var wrapped = false;
+        var landed = false;
+        for (var tick = 0; tick < 200; tick++)
+        {
+            tossEngine.Tick((YimyWalk.Core.Simulation.PetInstance)tossPet, 0.1);
+            var position = (Vector2)Property(tossPet, "FootPosition");
+            wrapped |= position.X < horizontalPair.Target.Left;
+            landed |= string.Equals(Property(tossPet, "State").ToString(), "Idle", StringComparison.Ordinal);
+            if (wrapped && landed) break;
+        }
+        var tossInstanceId = (Guid)Property(tossPet, "InstanceId");
+        session.GetType().GetMethod("Remove")!.Invoke(session, new object[] { tossInstanceId });
+        if (!wrapped || !landed)
+            throw new InvalidOperationException($"airborne toss did not wrap and land: wrapped={wrapped} landed={landed}");
+        Console.WriteLine($"CROSS-DISPLAY TOSS SOURCE_RIGHT={horizontalPair.Target.Right:0} REENTRY_LEFT_OF={horizontalPair.Target.Left:0} PASS");
     }
 }
 
@@ -315,4 +338,10 @@ static class Native
 {
     [DllImport("user32.dll")]
     public static extern uint GetGuiResources(IntPtr process, uint flags);
+}
+
+sealed class FixedRandom : IRandomSource
+{
+    public double NextDouble() => 0.5;
+    public int Next(int minInclusive, int maxExclusive) => minInclusive;
 }
