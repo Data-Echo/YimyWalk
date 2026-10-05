@@ -5,7 +5,7 @@ param(
     [string]$OutputPath = 'artifacts\publish\yimywalk-win-x64',
     [string]$DotnetPath,
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '0.1.1'
+    [string]$Version = '0.1.2'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -1,18 +1,18 @@
-# 当前状态（2026-10-05，M4.2 发布包与启动自检）
+# 当前状态（2026-10-05，v0.1.2 EXE 发布包）
 
-## 本地发布整理（2026-10-05）
+## 发布分支与 v0.1.2（2026-10-05）
 
-- **开发分支**：`codex/bootstrap` 保留完整源码、Core 测试、Desktop smoke、作者工具、上游审计快照和阶段文档；当前图标与版本提交为 `d7f580c feat: add YimyWalk application icon`，此前发布整理提交为 `461a69b`。
-- **标准主分支**：已从该开发基线创建本地 `main`，当前提交 `bdaf937 feat: add YimyWalk application icon`，并创建本地标签 `v0.1.1`（`v0.1.0` 保留为上一版标签）。主分支只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
+- **开发分支**：`codex/bootstrap` 保留完整源码、Core 测试、Desktop smoke、作者工具、上游审计快照和阶段文档。
+- **标准主分支**：`main` 只保留产品源码、角色、作者格式、必要构建/启动脚本、许可证和发布说明；不包含 `tests/`、`tools/`、`vendor/`、本地 SDK、smoke 脚本、测试日志或开发计划。
 - **主分支可构建性**：精简后的 `main` 使用只含 `YimyWalk.Core` 与 `YimyWalk.App` 的产品解决方案；在不复制 `.tools/` 且不含测试工程的工作树中，使用外部 .NET 8 SDK 完成 restore/build/publish，脚本会明确跳过不存在的测试项目。
-- **Release 产物**：`artifacts/release/v0.1.1/YimyWalk-v0.1.1-source.zip` 与 `artifacts/release/v0.1.1/YimyWalk-v0.1.1-win-x64.zip`；源码包不含开发/测试/上游目录，二进制包解压后通过 17 个文件、16 个 SHA-256 校验项检查。汇总校验见同目录 `SHA256SUMS.txt`。本版新增 `Resources/icon_yimy.png`（512×512）和含 7 个尺寸的 `Resources/yimywalk.ico`，并已从发布 EXE 提取验证。
-- **远程边界**：没有 push，没有修改远程默认分支，没有创建在线 Release；`origin` 和 `upstream` 均保持不变。
+- **Release 产物**：本次发布为 `v0.1.2`，入口为自包含单文件 `YimyWalk.exe`；发布包同时包含 `Characters/`、许可证、版本说明、manifest 和 SHA-256 清单。
+- **远程状态**：本次验证完成后将推送 `main`、`codex/bootstrap` 和 `v0.1.2` 标签；不会修改系统设置、开机启动或真实桌面文件。
 
 ## M4.2 发布包与启动自检实际结果（当前事实来源）
 
-- **代码已实现**：Core 新增 `StartupDiagnostics`，为角色根目录缺失、空目录和全部角色无效提供稳定错误码、原因和恢复方法；AppHost 在启动计时器前执行检查，Program 捕获启动失败并显示诊断，同时把摘要写入用户本地 `YimyWalk/startup-error.log`。`run-yimywalk.ps1` 在启动前检查 .NET 8 `Microsoft.NETCore.App`/`Microsoft.WindowsDesktop.App`、exe/dll/deps/runtimeconfig、`Characters` 和至少一个 `sprite.png`，不会联网、注册自启动、修改桌面文件或请求管理员权限。
-- **发布包已实现**：`scripts/build-yimywalk.ps1` 清理目标发布目录后 restore/test/publish，复制 `Characters/` 和 `THIRD_PARTY_NOTICES.md`，并生成 `PACKAGE_README.txt`、`PACKAGE_MANIFEST.json` 与 `PACKAGE_CHECKSUMS.txt`；`scripts/publish-yimywalk.ps1` 将同一流程输出到 `artifacts/publish/yimywalk-win-x64`。manifest 明确 x64、framework-dependent、.NET 8 Windows Desktop runtime、角色列表和默认安全边界。
-- **构建通过**：`scripts/build-yimywalk.ps1` 和 `scripts/publish-yimywalk.ps1` 均通过；发布包两次从相同输入生成的 `PACKAGE_CHECKSUMS.txt` SHA-256 为 `4D59633F38D30B2EB7B9BFECC5733218B15A96C81715D6FA446109DC4277B64B`，输出内容一致。
+- **代码已实现**：Core 新增 `StartupDiagnostics`，为角色根目录缺失、空目录和全部角色无效提供稳定错误码、原因和恢复方法；AppHost 在启动计时器前执行检查，Program 捕获启动失败并显示诊断，同时把摘要写入用户本地 `YimyWalk/startup-error.log`。`run-yimywalk.ps1` 检查 `YimyWalk.exe`、`Characters` 和至少一个 `sprite.png`；自包含发布包不依赖外部 .NET Runtime，仍保留旧 framework-dependent 开发输出的 runtime 诊断兼容。
+- **发布包已实现**：`scripts/build-yimywalk.ps1` 清理目标发布目录后 restore/test/publish，生成 self-contained single-file `YimyWalk.exe`，复制 `Characters/`、许可证和版本说明，并生成 `PACKAGE_README.txt`、`PACKAGE_MANIFEST.json` 与 `PACKAGE_CHECKSUMS.txt`；`scripts/publish-yimywalk.ps1` 使用同一流程输出发布目录。
+- **构建通过**：`scripts/build-yimywalk.ps1` 已通过；`YimyWalk.exe` 文件版本为 `0.1.2.0`，包清单标记 `selfContained=true`，发布目录 12 个文件、11 个 SHA-256 校验项，`scripts/test-release-package.ps1` 通过。
 - **核心测试通过**：`.tools/dotnet/dotnet.exe test YimyWalk.sln --configuration Release --no-restore` 通过 **89/89**，其中新增 `StartupDiagnosticsTests` 4 项；Core 仍未引用 WinForms 或桌面绘制对象。
 - **Windows 桌面已验证**：可见桌面上 `scripts/desktop-smoke.ps1 -Rounds 1 -Role slime` 通过，真实启动发布版宿主并完成 1/10/50/100 创建/清空、角色刷新成功/失败保留和资源计数回落；本轮 100 只清空后 `ACTIVE=0`、`WINDOWS=0`、`CACHE=0`、`USER=29`、`GDI=33`，Host Dispose 后 `USER=10`、`GDI=27`。另用 `run-yimywalk.ps1 -PublishPath artifacts/publish/yimywalk-win-x64` 启动发布包约 2 秒后由测试进程结束，入口预检通过。
 - **Windows 桌面未验证**：本任务没有重新执行已通过的双显示器 83/83 矩阵；负坐标显示器、物理拔插、睡眠唤醒、更长时间 CPU/内存曲线、权限受限会话和更高实例压力仍保持未验证。发布/核心/启动预检证据不能替代这些真实桌面验收。

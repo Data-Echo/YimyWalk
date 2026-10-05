@@ -6,7 +6,15 @@ using System.Windows.Forms;
 var rounds = args.Length == 0 ? 1 : int.TryParse(args[0], out var parsed) && parsed > 0 && parsed <= 20 ? parsed : throw new ArgumentException("Rounds must be between 1 and 20.");
 var role = args.Length < 2 ? "cat" : args[1];
 var landingRequested = args.Length >= 3 && args[2].Equals("landing", StringComparison.OrdinalIgnoreCase);
-var app = Assembly.LoadFrom(Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/YimyWalk.App.dll"));
+var appAssemblyCandidates = new[]
+{
+    Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/YimyWalk.App.dll"),
+    Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/YimyWalk.App.dll"),
+    Path.GetFullPath("src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/YimyWalk.App.dll")
+};
+var appAssemblyPath = appAssemblyCandidates.FirstOrDefault(File.Exists)
+    ?? throw new FileNotFoundException("YimyWalk.App development assembly was not found.");
+var app = Assembly.LoadFrom(appAssemblyPath);
 var settingsRoot = Path.Combine(Path.GetTempPath(), "YimyWalkSettingsSmoke", Guid.NewGuid().ToString("N"));
 var settingsType = app.GetType("YimyWalk.App.Settings.SettingsStore", true)!;
 var settingsStore = Activator.CreateInstance(settingsType, new object[] { settingsRoot })!;

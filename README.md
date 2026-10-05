@@ -4,8 +4,8 @@ YimyWalk 是一个离线运行的 Windows x64 桌面 2D 宠物引擎。把符合
 
 ## 使用
 
-1. 安装 .NET 8 `Microsoft.WindowsDesktop.App` x64 runtime。
-2. 运行 `Start-YimyWalk.ps1`，或直接运行 `YimyWalk.App.exe`。
+1. 直接双击 `YimyWalk.exe`。
+2. `Start-YimyWalk.ps1` 仅作为可选的启动诊断包装器保留。
 3. 角色目录至少需要一张透明的 3×3 `sprite.png`：
 
 ```text
@@ -18,7 +18,7 @@ Characters/<id>/sprite.png
 
 - 默认离线运行，不联网、不下载内容、不注册开机启动。
 - 不请求管理员权限，不移动、删除、改名或修改真实桌面文件。
-- 发布包是 framework-dependent 的 x64 包；运行时由用户单独安装。
+- 发布包是 self-contained 的 x64 包，已包含所需 .NET 运行时，不需要单独安装运行时。
 - 角色目录只读取图片、配置和对白，不执行脚本、命令、DLL 或远程资源。
 
 ## 从源码构建

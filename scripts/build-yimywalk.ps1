@@ -5,7 +5,7 @@ param(
     [string]$PublishPath,
     [string]$DotnetPath,
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '0.1.1'
+    [string]$Version = '0.1.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,8 +50,16 @@ try {
     if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
     New-Item -ItemType Directory -Path $publish -Force | Out-Null
 
-    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained false --no-restore -p:Platform=x64 -p:Version=$Version -p:VersionPrefix=$Version -p:PublishDir="$publish\"
+    & $dotnet publish src\YimyWalk.App\YimyWalk.App.csproj --configuration $Configuration --runtime win-x64 --self-contained true --no-restore -p:Platform=x64 -p:Version=$Version -p:VersionPrefix=$Version -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$publish\"
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+
+    $publishedAppHost = Join-Path $publish 'YimyWalk.App.exe'
+    $releaseAppHost = Join-Path $publish 'YimyWalk.exe'
+    if (-not (Test-Path -LiteralPath $publishedAppHost -PathType Leaf)) {
+        throw 'Publish output is missing the YimyWalk application executable.'
+    }
+    if (Test-Path -LiteralPath $releaseAppHost) { Remove-Item -LiteralPath $releaseAppHost -Force }
+    Move-Item -LiteralPath $publishedAppHost -Destination $releaseAppHost
 
     Get-ChildItem -LiteralPath $publish -File -Recurse -Filter '*.pdb' | Remove-Item -Force
 
@@ -69,9 +77,9 @@ try {
     $packageReadme = @"
 YimyWalk v$Version offline Windows x64 package
 
-Run Start-YimyWalk.ps1 (or YimyWalk.App.exe) from this directory. This framework-dependent package requires:
-- .NET 8 Microsoft.NETCore.App (x64)
-- .NET 8 Microsoft.WindowsDesktop.App (x64)
+Run YimyWalk.exe from this directory. This self-contained package includes the
+Windows x64 .NET runtime and does not require a separate runtime installation.
+Start-YimyWalk.ps1 is retained as an optional diagnostic wrapper.
 
 Characters/<role-id>/sprite.png is the required role format. The package does not
 enable networking, startup registration, or administrator privileges.
@@ -86,8 +94,8 @@ Third-party license and attribution information is in THIRD_PARTY_NOTICES.md.
         version = $Version
         architecture = 'win-x64'
         targetFramework = 'net8.0-windows'
-        selfContained = $false
-        requiredRuntimes = @('Microsoft.NETCore.App 8.0', 'Microsoft.WindowsDesktop.App 8.0')
+        selfContained = $true
+        requiredRuntimes = @()
         roles = $roles
         licenseFiles = @('THIRD_PARTY_NOTICES.md', 'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt')
         networkEnabledByDefault = $false
@@ -98,9 +106,7 @@ Third-party license and attribution information is in THIRD_PARTY_NOTICES.md.
     $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
     $requiredFiles = @(
-        'YimyWalk.App.exe', 'YimyWalk.App.dll', 'YimyWalk.App.deps.json',
-        'YimyWalk.App.runtimeconfig.json', 'YimyWalk.Core.dll',
-        'SixLabors.ImageSharp.dll', 'THIRD_PARTY_NOTICES.md', 'RELEASE_NOTES.md',
+        'YimyWalk.exe', 'THIRD_PARTY_NOTICES.md', 'RELEASE_NOTES.md',
         'Start-YimyWalk.ps1', 'run-yimywalk.ps1', 'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt',
         'PACKAGE_README.txt', 'PACKAGE_MANIFEST.json')
     foreach ($file in $requiredFiles) {

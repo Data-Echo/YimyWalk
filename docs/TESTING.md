@@ -12,7 +12,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-yimywalk.ps1
 
 `build-yimywalk.ps1` 会 restore、运行整个解决方案的核心测试，清理并发布 x64 `net8.0-windows` 应用，同时把 `Characters/`、`THIRD_PARTY_NOTICES.md` 和发布 manifest 复制到发布目录。`test-yimywalk.ps1` 只运行 Release 核心测试，适合快速回归。`publish-yimywalk.ps1` 使用同一套流程把可复制包写到 `artifacts/publish/yimywalk-win-x64`；每次运行都会清理目标目录并生成 `PACKAGE_CHECKSUMS.txt`，两次相同输入应得到相同清单。
 
-发布包是 framework-dependent x64 应用，启动前需要 .NET 8 `Microsoft.NETCore.App` 和 `Microsoft.WindowsDesktop.App`。`run-yimywalk.ps1` 会检查 runtime、exe/dll/deps/runtimeconfig、`Characters` 目录和至少一个 `sprite.png`，缺失时返回 `RUNTIME_MISSING`、`PUBLISH_INCOMPLETE` 或 `CHARACTERS_*` 诊断而不启动应用。它不会修改安装目录之外的桌面文件、注册开机启动或请求管理员权限。应用启动后若角色目录全部无效，会显示 `CHARACTERS_INVALID` 并把摘要写入用户本地 `YimyWalk/startup-error.log`。
+发布包是 self-contained x64 单文件应用，直接双击 `YimyWalk.exe` 即可运行，不需要单独安装 .NET Runtime。`run-yimywalk.ps1` 会检查发布目录、`YimyWalk.exe`、`Characters` 目录和至少一个 `sprite.png`；缺失时返回 `PUBLISH_INCOMPLETE` 或 `CHARACTERS_*` 诊断而不启动应用。脚本仍兼容旧的 framework-dependent 开发输出并保留 `RUNTIME_MISSING` 诊断。它不会修改安装目录之外的桌面文件、注册开机启动或请求管理员权限。应用启动后若角色目录全部无效，会显示 `CHARACTERS_INVALID` 并把摘要写入用户本地 `YimyWalk/startup-error.log`。
 
 在可见 Windows 桌面会话中，`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-smoke.ps1` 会使用临时 `tools/DesktopSmoke` 宿主真实创建并清空 1、10、50、100 个窗口，并输出累计处理器秒数 `CPU_S`、工作集、私有字节、托管堆、句柄、USER/GDI 基线；可追加 `-Rounds 3`（上限 20）在同一宿主进程重复多轮以观察趋势，或追加 `-Role slime` 验证另一套仅含 `sprite.png` 的角色。它不验证透明点击、拖拽或焦点行为，这些由输入矩阵单独验证。
 
