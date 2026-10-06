@@ -90,8 +90,13 @@ internal static class Program
             list.Items[0].Selected = true;
             Pump(40);
             var petsPage = VisiblePage();
+            var scaleLabel = FindText(petsPage, "实例大小");
+            Require(scaleLabel is { Visible: true } && IsFullyVisible(scaleLabel),
+                "pets instance scale setting is visible after selecting an instance");
             var scaleMode = Field(petsPage, "_scaleMode");
             var scaleInput = Field(petsPage, "_scale");
+            Require(IsFullyVisible((Control)scaleMode) && IsFullyVisible((Control)scaleInput),
+                "pets instance scale controls are fully visible after selecting an instance");
             var selectedId = (Guid)list.Items[0].Tag!;
             SetProp(scaleMode, "SelectedIndex", 1);
             SetProp(scaleInput, "Value", 0.7m);
@@ -227,6 +232,18 @@ internal static class Program
     }
     static Control? FindText(Control root, string text)
         => Descendants(root).FirstOrDefault(control => control.Text.Equals(text, StringComparison.Ordinal) || control.Text.StartsWith(text, StringComparison.Ordinal));
+    static bool IsFullyVisible(Control control)
+    {
+        if (!control.Visible) return false;
+        var bounds = control.RectangleToScreen(control.ClientRectangle);
+        for (var parent = control.Parent; parent is not null; parent = parent.Parent)
+        {
+            if (parent is not ScrollableControl scrollable) continue;
+            var clip = scrollable.RectangleToScreen(scrollable.ClientRectangle);
+            if (!clip.Contains(bounds)) return false;
+        }
+        return true;
+    }
     static void Pump(int milliseconds)
     {
         var sw = Stopwatch.StartNew();

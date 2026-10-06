@@ -5,6 +5,7 @@
 - The Pets page now lets each running instance follow the global scale or use a custom 0.1–8.0× size.
 - Custom instance size is runtime-only. Changing the global scale affects only instances that follow it; clearing an override restores inheritance, and restarting restores the global default.
 - Added Core and ManagerUiSmoke regression coverage for mixed-role instances, UI controls, inheritance, and reset behavior.
+- Fixed the Pets detail layout so the instance-size source selector and numeric input remain visible after selecting a pet at the normal 125% DPI window size.
 
 # YimyWalk v0.1.5
 

@@ -30,10 +30,10 @@ internal sealed class PetsPage : ManagerPage
     private readonly Label _scaleSource = UiTheme.CreateBodyLabel();
     private readonly AntdUI.Select _walkOverride = CreateOverrideCombo();
     private readonly AntdUI.Select _dialogueOverride = CreateOverrideCombo();
-    private readonly AntdUI.Select _activityMode = UiTheme.CreateSelect(150);
-    private readonly AntdUI.InputNumber _activityRate = UiTheme.CreateInputNumber(0.1m, 4m, 0.1m, 1, 100);
-    private readonly AntdUI.Select _scaleMode = UiTheme.CreateSelect(150);
-    private readonly AntdUI.InputNumber _scale = UiTheme.CreateInputNumber(0.1m, 8m, 0.1m, 1, 100);
+    private readonly AntdUI.Select _activityMode = UiTheme.CreateSelect(120);
+    private readonly AntdUI.InputNumber _activityRate = UiTheme.CreateInputNumber(0.1m, 4m, 0.1m, 1, 90);
+    private readonly AntdUI.Select _scaleMode = UiTheme.CreateSelect(120);
+    private readonly AntdUI.InputNumber _scale = UiTheme.CreateInputNumber(0.1m, 8m, 0.1m, 1, 90);
     private readonly AntdUI.Button _remove = UiTheme.CreateButton("删除选中");
     private readonly AntdUI.Button _feed = UiTheme.CreateButton("喂食");
     private readonly AntdUI.Button _reset = UiTheme.CreateButton("恢复跟随互动默认值");
@@ -56,8 +56,12 @@ internal sealed class PetsPage : ManagerPage
         _dialogueOverride.Items.AddRange(new object[] { "跟随全局", "开启", "关闭" });
 
         var layout = CreateRootLayout();
+        // The page heading is content-sized; the list/detail split must take
+        // the remaining page height instead of staying at its 430px minimum.
+        layout.Dock = DockStyle.Fill;
+        layout.AutoSize = false;
         AddHeading(layout, "桌宠", "管理当前运行实例；这里的单只设置不会改写全局默认。");
-        var split = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 430), ColumnCount = 2, RowCount = 1 };
+        var split = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, MinimumSize = new Size(0, 430), ColumnCount = 2, RowCount = 1 };
         split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
         split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
 
@@ -73,6 +77,8 @@ internal sealed class PetsPage : ManagerPage
         var detail = BuildDetailPanel();
         split.Controls.Add(detail, 1, 0);
         AddRow(layout, split);
+        split.Dock = DockStyle.Fill;
+        layout.RowStyles[layout.RowCount - 1] = new RowStyle(SizeType.Percent, 100f);
 
         _list.SelectedIndexChanged += (_, _) => SelectFromList();
         _walkOverride.SelectedIndexChanged += (_, _) => ApplyBooleanOverride(isWalk: true);
@@ -114,7 +120,10 @@ internal sealed class PetsPage : ManagerPage
         _runtime.Dock = DockStyle.Top;
         _saveNote.Dock = DockStyle.Top;
         _operation.Dock = DockStyle.Top;
-        var previewRow = new Panel { Dock = DockStyle.Top, Height = 184, Padding = new Padding(0, 0, 0, UiTheme.Space8) };
+        // Keep the idle1 preview useful while leaving the first instance-size
+        // row visible at the normal 1120x720 window size. Smaller windows can
+        // still scroll the card for the action buttons below the settings.
+        var previewRow = new Panel { Dock = DockStyle.Top, Height = 128, Padding = new Padding(0, 0, 0, UiTheme.Space8) };
         _preview.Dock = DockStyle.Left;
         previewRow.Controls.Add(_preview);
         var settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 0, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
