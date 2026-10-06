@@ -89,6 +89,18 @@ internal static class Program
             var list = Descendants(manager).OfType<ListView>().Single(listView => listView.Visible);
             list.Items[0].Selected = true;
             Pump(40);
+            var petsPage = VisiblePage();
+            var scaleMode = Field(petsPage, "_scaleMode");
+            var scaleInput = Field(petsPage, "_scale");
+            var selectedId = (Guid)list.Items[0].Tag!;
+            SetProp(scaleMode, "SelectedIndex", 1);
+            SetProp(scaleInput, "Value", 0.7m);
+            Require(Math.Abs((float)Prop(Call(host, "FindPet", selectedId)!, "ScaleOverride") - 0.7f) < 0.001f,
+                "pets page applies custom instance size through the host");
+            SetProp(scaleMode, "SelectedIndex", 0);
+            Require(Prop(Call(host, "FindPet", selectedId)!, "ScaleOverride") is null,
+                "pets page reset returns instance size to global inheritance");
+            Console.WriteLine("INSTANCE_SCALE_UI selected=0.7 reset=PASS");
             var runtime = Descendants(manager).OfType<Label>().First(label => label.Visible && label.Text.StartsWith("状态：", StringComparison.Ordinal));
             var runtimeBefore = runtime.Text;
             Pump(500);
