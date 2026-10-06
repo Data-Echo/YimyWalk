@@ -5,59 +5,84 @@ namespace YimyWalk.App.UI.Pages;
 
 internal sealed class CharactersPage : ManagerPage
 {
-    private readonly ComboBox _characters = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 280 };
+    private readonly ListView _characters = new()
+    {
+        View = View.Details,
+        FullRowSelect = true,
+        HideSelection = false,
+        MultiSelect = false,
+        HeaderStyle = ColumnHeaderStyle.Nonclickable,
+        BorderStyle = BorderStyle.FixedSingle,
+        Dock = DockStyle.Fill,
+        TabStop = true
+    };
+    private readonly Label _roleName = UiTheme.CreateBodyLabel();
     private readonly Label _roleId = UiTheme.CreateMutedLabel();
     private readonly Label _roleInfo = UiTheme.CreateBodyLabel();
-    private readonly Label _reloadStatus = UiTheme.CreateBodyLabel();
+    private readonly Label _reloadStatus = UiTheme.CreateMutedLabel();
     private readonly CharacterFramePreview _preview;
-    private readonly Button _setDefault = UiTheme.CreateButton("设为下次创建角色", primary: true);
+    private readonly AntdUI.Button _refresh = UiTheme.CreateButton("刷新角色");
+    private readonly AntdUI.Button _setDefault = UiTheme.CreateButton("设为默认角色", primary: true);
     private bool _synchronizing;
 
     public CharactersPage(AppHost host) : base(host)
     {
-        _preview = new CharacterFramePreview(host.SurfaceCache) { Dock = DockStyle.Fill, MinimumSize = new Size(180, 180) };
+        _preview = new CharacterFramePreview(host.SurfaceCache) { Dock = DockStyle.Fill, MinimumSize = new Size(220, 220) };
+        _characters.Columns.Add("名称", 100);
+        _characters.Columns.Add("角色 ID", 80);
+        _characters.Columns.Add("状态", 50);
+        _characters.Columns.Add("默认", 50);
+
         var layout = CreateRootLayout();
         AddHeading(layout, "角色", "管理角色包和下次创建的默认角色。查看角色不会改变当前运行实例的选择。");
 
-        var content = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 260), ColumnCount = 2, RowCount = 1 };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
-        var card = UiTheme.CreateCard();
-        card.Dock = DockStyle.Fill;
-        card.Controls.Add(new Label { Text = "下次创建默认角色", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top });
-        var row = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
-        row.Controls.Add(_characters);
-        var refresh = UiTheme.CreateButton("刷新角色");
-        refresh.Click += (_, _) => ReloadCharacters();
-        row.Controls.Add(refresh);
+        var content = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 430), ColumnCount = 2, RowCount = 1 };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+
+        var listCard = UiTheme.CreateCard();
+        listCard.Dock = DockStyle.Fill;
+        listCard.MinimumSize = new Size(0, 430);
+        var listTitle = new Label { Text = "角色列表", AutoSize = true, Font = UiTheme.SectionFont, ForeColor = UiTheme.Ink, Dock = DockStyle.Top };
+        listCard.Controls.Add(_characters);
+        listCard.Controls.Add(listTitle);
+        content.Controls.Add(listCard, 0, 0);
+
+        var detailCard = UiTheme.CreateCard();
+        detailCard.Dock = DockStyle.Fill;
+        detailCard.MinimumSize = new Size(0, 430);
+        detailCard.AutoScroll = true;
+        var details = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Padding = Padding.Empty, Margin = Padding.Empty };
+        details.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var actions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
+        _refresh.Click += (_, _) => ReloadCharacters();
         _setDefault.Click += (_, _) =>
         {
-            if (_characters.SelectedItem is RoleChoice role)
-            {
-                Host.SetSelectedRole(role.Id);
-                _reloadStatus.Text = $"已将“{role.DisplayName}”设为下次创建默认角色。";
-                ShowSelectedRole();
-            }
+            if (_characters.SelectedItems.Count == 0 || _characters.SelectedItems[0].Tag is not RoleChoice role) return;
+            Host.SetSelectedRole(role.Id);
+            _reloadStatus.Text = $"已将“{role.DisplayName}”设为下次创建默认角色。";
+            RefreshCharacters();
+            ShowSelectedRole();
         };
-        row.Controls.Add(_setDefault);
-        card.Controls.Add(row);
-        _roleId.Dock = DockStyle.Top;
-        _roleInfo.Dock = DockStyle.Top;
-        _roleInfo.MaximumSize = new Size(520, 0);
-        card.Controls.Add(_roleInfo);
-        card.Controls.Add(_roleId);
-        card.Controls.Add(_reloadStatus);
-        content.Controls.Add(card, 0, 0);
-
-        var previewCard = UiTheme.CreateCard();
-        previewCard.Dock = DockStyle.Fill;
-        previewCard.Controls.Add(_preview);
-        content.Controls.Add(previewCard, 1, 0);
+        actions.Controls.Add(_refresh);
+        actions.Controls.Add(_setDefault);
+        AddDetailRow(details, actions);
+        var previewRow = new Panel { Dock = DockStyle.Top, Height = 210, Padding = new Padding(0, UiTheme.Space8, 0, UiTheme.Space8) };
+        previewRow.Controls.Add(_preview);
+        AddDetailRow(details, previewRow);
+        _roleName.Font = UiTheme.SectionFont;
+        AddDetailRow(details, _roleName);
+        AddDetailRow(details, _roleId);
+        _roleInfo.MaximumSize = new Size(430, 0);
+        AddDetailRow(details, _roleInfo);
+        AddDetailRow(details, _reloadStatus);
+        detailCard.Controls.Add(details);
+        content.Controls.Add(detailCard, 1, 0);
         AddRow(layout, content);
 
         _characters.SelectedIndexChanged += (_, _) =>
         {
-            if (_synchronizing || _characters.SelectedItem is not RoleChoice role) return;
+            if (_synchronizing) return;
             ShowSelectedRole();
         };
     }
@@ -76,17 +101,24 @@ internal sealed class CharactersPage : ManagerPage
         try
         {
             var current = Host.SelectedRoleId;
-            _characters.Items.Clear();
-            foreach (var definition in Host.Catalog.Definitions.Values.OrderBy(definition => definition.Id))
-                _characters.Items.Add(new RoleChoice(definition.Id, definition.DisplayName));
-            for (var index = 0; index < _characters.Items.Count; index++)
-                if (_characters.Items[index] is RoleChoice role && role.Id.Equals(current, StringComparison.OrdinalIgnoreCase))
+            _characters.BeginUpdate();
+            try
+            {
+                _characters.Items.Clear();
+                foreach (var definition in Host.Catalog.Definitions.Values.OrderBy(definition => definition.Id))
                 {
-                    _characters.SelectedIndex = index;
-                    break;
+                    var choice = new RoleChoice(definition.Id, definition.DisplayName);
+                    var row = new ListViewItem(choice.DisplayName) { Tag = choice };
+                    row.SubItems.Add(choice.Id);
+                    row.SubItems.Add("有效");
+                    row.SubItems.Add(choice.Id.Equals(current, StringComparison.OrdinalIgnoreCase) ? "当前" : string.Empty);
+                    _characters.Items.Add(row);
                 }
-            if (_characters.SelectedIndex < 0 && _characters.Items.Count > 0)
-                _characters.SelectedIndex = 0;
+                var selected = _characters.Items.Cast<ListViewItem>().FirstOrDefault(item => item.Tag is RoleChoice role && role.Id.Equals(current, StringComparison.OrdinalIgnoreCase));
+                if (selected is not null) selected.Selected = true;
+                else if (_characters.Items.Count > 0) _characters.Items[0].Selected = true;
+            }
+            finally { _characters.EndUpdate(); }
         }
         finally { _synchronizing = false; }
     }
@@ -113,18 +145,22 @@ internal sealed class CharactersPage : ManagerPage
 
     private void ShowSelectedRole()
     {
-        if (_characters.SelectedItem is not RoleChoice role || !Host.Catalog.TryGet(role.Id, out var definition))
+        var role = _characters.SelectedItems.Count > 0 ? _characters.SelectedItems[0].Tag as RoleChoice : null;
+        if (role is null || !Host.Catalog.TryGet(role.Id, out var definition))
         {
-            _roleId.Text = "没有可用角色定义";
+            _roleName.Text = "没有可用角色定义";
+            _roleId.Text = string.Empty;
             _roleInfo.Text = string.Empty;
             _setDefault.Enabled = false;
             _preview.ShowIdleFrame(null);
             return;
         }
 
-        _roleId.Text = $"角色 ID：{definition.Id}";
+        _roleName.Text = definition.DisplayName;
+        _roleId.Text = $"角色 ID：{definition.Id} · 有效定义";
         var isDefault = definition.Id.Equals(Host.SelectedRoleId, StringComparison.OrdinalIgnoreCase);
         _roleInfo.Text = $"{(isDefault ? "当前为下次创建默认角色。" : "预览角色，不会改变下次创建默认值。")}{Environment.NewLine}角色基础行为：自主走动速度 {definition.Movement.WalkSpeed:0.#} px/s；活跃度倍率在互动页统一设置。";
+        _setDefault.Text = isDefault ? "当前默认" : "设为默认角色";
         _setDefault.Enabled = !isDefault;
         _preview.ShowIdleFrame(definition);
     }
@@ -132,12 +168,21 @@ internal sealed class CharactersPage : ManagerPage
     private bool NeedsCharacterRefresh()
     {
         var ids = Host.Catalog.Definitions.Keys.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToArray();
-        var current = _characters.Items.Cast<RoleChoice>().Select(role => role.Id).OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToArray();
+        var current = _characters.Items.Cast<ListViewItem>()
+            .Select(item => item.Tag as RoleChoice)
+            .Where(role => role is not null)
+            .Select(role => role!.Id)
+            .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         return !ids.SequenceEqual(current, StringComparer.OrdinalIgnoreCase);
     }
 
-    private sealed record RoleChoice(string Id, string DisplayName)
+    private static void AddDetailRow(TableLayoutPanel details, Control control)
     {
-        public override string ToString() => $"{Id} — {DisplayName}";
+        control.Margin = new Padding(0, 4, 0, 4);
+        details.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        details.Controls.Add(control, 0, details.RowCount++);
     }
+
+    private sealed record RoleChoice(string Id, string DisplayName);
 }

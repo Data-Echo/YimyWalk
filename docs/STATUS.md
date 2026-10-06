@@ -1,3 +1,5 @@
+> **最新交接优先**：文档前段的旧任务栏启动/关闭描述是历史记录；当前实现与验收以文末 M4.1 UI/托盘修复交接为准。
+
 # 当前状态（2026-10-05，M4 UI shell 最小切片）
 
 ## M4 UI shell 最小切片（2026-10-05）
@@ -268,3 +270,43 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 ## 下一阶段
 
 已写入 `docs/superpowers/plans/2026-10-05-m4-stabilization.md`。下一条可执行任务是 M4.1：整理角色作者材料、校验入口和发布包自检；随后再处理真实验收中发现的稳定性问题。第二显示器和真实快捷方式继续作为单独的未验证/后续项目。
+
+## M4.1 UI/托盘修复交接（2026-10-06）
+
+**真实原因**：连续删除异常已取得堆栈，根因是 `PetsPage.ApplyProjectionToList` 在 `ListView.Items.Remove` 触发同步选择变化后重入，外层继续操作陈旧内部索引；布局测量显示原 Dock 左侧栏与 Fill 内容都从 `X=0` 开始，内容宿主实际侵入侧栏。状态不更新的直接原因是管理页只有实例/队列事件刷新，没有可见窗口的周期采样。托盘旧实现由 `ApplicationContext.MainForm` 和 FormClosing 最小化绑定，且 NotifyIcon 只处理双击，不符合新入口要求。
+
+**代码已实现**：根布局改为 DPI 缩放两列；品牌移至底部，移除侧栏退出按钮；`PetsPage` 以复制快照和 200ms Timer 增量更新，按稳定 ID 恢复选择/滚动并抑制绑定重入；详情显示运行状态、饥饿和位置。托盘左键打开，管理器启动隐藏，×/Alt+F4 隐藏到托盘，右键有“打开主菜单/退出 YimyWalk”；退出仍走统一清理路径，清空先取消待创建队列。
+
+**验证**：`ManagerUiSmoke` 构建通过并实测 120 DPI 默认环境五页内容宿主均从 `X=200` 开始；混合 cat/slime 30 实例按头/中/尾删除，目标 ID 和核心/列表数量一致，未再出现异常；可见详情 200ms 采样在无输入时发生变化。Core/应用构建和测试待本轮最终串行执行。真实通知区域左键、Alt+F4、100 实例可见列表压力、100/125/150/200 DPI 及最大化/最小尺寸尚未完成，均保持“Windows 桌面未验证”。
+
+**操作**：启动发布的 `YimyWalk.exe` 后只留托盘；左键托盘图标打开主菜单；窗口 × 或 Alt+F4 隐藏到托盘；右键托盘选择“退出 YimyWalk”彻底结束进程。
+
+## M4.1 最终验证记录（2026-10-06）
+
+- **代码已实现**：根两列布局、底部品牌区、200ms 可见窗口采样、稳定 ID 增量行更新、删除重入保护、托盘左键打开/右键退出、启动隐藏和 × 隐藏到托盘均已写入源码。`tools/ManagerUiSmoke` 是可重复的 WinForms 集成回归，包含五页几何、20 次打开/隐藏、队列清空、无输入状态变化和 30 只混合角色头/中/尾删除。
+- **构建通过**：`dotnet build src/YimyWalk.App/YimyWalk.App.csproj -c Release -p:Platform=x64`；`dotnet test YimyWalk.sln --configuration Release --no-restore` 101/101；ManagerUiSmoke 构建通过。
+- **逻辑/集成测试通过**：ManagerUiSmoke 在当前 Windows 会话 DPI 120 下报告五页内容宿主 `X=250`、队列清空后活动/待创建均为 0、约 200ms 采样更新详情、删除目标 ID 与列表/Core 数量一致，无 InvalidArgument 异常。生成的检查图为 `artifacts/ui-smoke/overview.png` 和 `artifacts/ui-smoke/pets.png`。
+- **Windows 桌面已验证**：更新后的输入 smoke 完成启动隐藏、托盘菜单打开、管理器 × 隐藏后重开、角色刷新、设置、虚拟食物和退出清理；托盘菜单项通过真实 `NotifyIcon.ContextMenuStrip` 菜单路径调用。当前会话有第二显示器（DISPLAY1/2）且 DPI 120，未进行 100/125/150/200 切换矩阵。
+- **Windows 桌面未验证**：通知区域图标本身的物理左键、Alt+F4、最小尺寸/最大化还原和 100/125/150/200 DPI 组合未逐项完成；输入 smoke 的透明穿透检查受当前前台桌面窗口阻挡而返回 exit code 2，不能把它记为全部桌面验收通过。100 实例可见列表刷新压力和长时间资源曲线仍未验证。
+
+## M4.2 AntdUI 管理界面重构（2026-10-06）
+
+**真实原因与修改**：角色页双标题来自 ManagerForm 宿主标题与页面标题同时绘制；页面裁切来自 AntdUI.Panel 不向外层 TableLayoutPanel 提供子控件首选高度，导致卡片高度为 0 或固定内容落在可视区域之外。`UiTheme` 现在集中管理 AntdUI 2.4.12、颜色、字体、圆角和控件尺寸；五页改用 AntdUI Button、Switch、Select、InputNumber、Panel，并保留原生布局与滚动容器。卡片按实际内容设置可审阅高度，长说明换行，桌宠详情保留滚动，角色预览使用缓存的 idle1/index 0 单帧。总览增加“当前默认角色 + 数量 Select + 创建桌宠”组合，退出入口仍只在托盘菜单。
+
+**代码已实现**：`YimyWalk.App.csproj` 固定 AntdUI 2.4.12；`UiTheme.cs` 提供主题和控件工厂；`ManagerPage.cs` 保持单页标题与纵向滚动；`OverviewPage`、`PetsPage`、`CharactersPage`、`InteractionsPage`、`SettingsPage` 完成控件和布局重构。`ManagerUiSmoke` 增加关键文本可见性、父级裁切、滚动末尾、AntdUI 控件存在性和角色预览尺寸断言；`DesktopInputSmoke` 已适配 Select/Switch/InputNumber，并继续验证真实 AppHost 入口。
+
+**构建与逻辑测试**：应用、ManagerUiSmoke、DesktopInputSmoke 均以 x64 Release 构建通过；`dotnet test YimyWalk.sln --configuration Release --no-restore` 通过 101/101；ManagerUiSmoke 在当前 120 DPI 会话中通过五页截图、布局断言、200ms 状态刷新、创建队列清空和 30 只混合 cat/slime 稳定 ID 删除回归。
+
+**Windows 桌面已验证**：更新后的 `scripts/desktop-input-smoke.ps1` 通过真实管理窗口生命周期、托盘菜单打开/隐藏/重开/退出、角色浏览与显式设为默认、AntdUI 设置/互动控件、idle1 预览、气泡、虚拟食物和资源清理。当前会话报告 DISPLAY1/2 均为 DPI 120（125%）。真实截图来自 `artifacts/ui-smoke/antd-overview.png`、`antd-pets.png`、`antd-characters.png`、`antd-interactions.png`、`antd-settings.png`。
+
+**尚未验证**：100%、150%、200% DPI 切换；最小支持尺寸、最大化还原和真实通知区域左键/Alt+F4 的逐项桌面矩阵；100 实例下管理列表的长时间可见刷新压力；桌面审美验收。截图/布局 smoke 不替代这些 Windows 交互验收。
+
+## M4.2 发布验证补充（2026-10-06）
+
+- `scripts/build-yimywalk.ps1 -Version 0.1.8` 完成 restore、101/101 Core 测试和 x64 self-contained 发布；`scripts/test-release-package.ps1 -Path src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish -Version 0.1.8` 返回 `PACKAGE PASS VERSION=0.1.8 FILES=12 CHECKSUMS=11`。
+- 发布入口：`src/YimyWalk.App/bin/x64/Release/net8.0-windows/win-x64/publish/YimyWalk.exe`，文件版本 `0.1.8.0`。发布目录已带 AntdUI、角色资源、第三方声明和校验清单。
+- 五张布局图由本次 Release UI smoke 生成：`artifacts/ui-smoke/antd-overview.png`、`antd-pets.png`、`antd-characters.png`、`antd-interactions.png`、`antd-settings.png`。它们验证了实际 WinForms 控件布局；未将其当作通知区域左键、Alt+F4 或其他未执行的桌面矩阵验收。
+
+- 角色页最终采用稳定角色 ID 的 `ListView` 列表（名称、ID、有效状态、默认标记）与右侧 idle1 详情，而不是下拉选择；查看行不会改变创建默认，只有“设为默认角色”按钮会调用 `AppHost.SetSelectedRole`。
+- 角色列表和桌宠实例列表同时存在于缓存页面时，smoke 按当前可见列表选择，避免测试工具把两类列表混淆；本轮 DesktopInputSmoke 已重新通过。
+- 全局和应用级布尔项的 AntdUI Switch 旁显示“开启/关闭”文字状态，且状态标签由控件事件同步；这保证状态不只依赖颜色或滑块位置。

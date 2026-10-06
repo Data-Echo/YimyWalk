@@ -24,3 +24,12 @@ The upstream README credits NAudio and several sprite authors. We keep the snaps
 
 - `Characters/cat/sprite.png` and `Characters/slime/sprite.png` are the YimyWalk sample role assets included in this repository.
 - They are not copied from the `vendor/esheep/` snapshot. The upstream snapshot's bundled media is not included in the release.
+
+## AntdUI 2.4.12
+
+- Package: `AntdUI` 2.4.12
+- Source: <https://github.com/AntdUI/AntdUI>
+- Fixed source tag: `v2.4.12` (`3d64564ebca42c6d2809034983822b43ac7f2e1e`)
+- License: Apache-2.0
+- Use in YimyWalk: WinForms management shell only (`Button`, `Switch`, `Select`, `InputNumber`, and `Panel`). Pet windows, rendering and Core do not depend on the UI package.
+- The package has no additional direct package dependency. The NuGet package and license metadata are copied into the normal restore/publish process; no CDN, Node, or runtime network access is required.

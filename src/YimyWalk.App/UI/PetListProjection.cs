@@ -1,8 +1,16 @@
 using YimyWalk.Core.Simulation;
+using YimyWalk.Core.Characters;
+using System.Numerics;
 
 namespace YimyWalk.App.UI;
 
-internal sealed record PetListItem(Guid InstanceId, string RoleId, string RoleName, PetState State, float Hunger);
+internal sealed record PetListItem(Guid InstanceId, CharacterDefinition Definition, PetState State,
+    float Hunger, Vector2 Position, PetBehaviorOverrides BehaviorOverrides)
+{
+    public string RoleName => Definition.DisplayName;
+    public static PetListItem Capture(PetInstance pet)
+        => new(pet.InstanceId, pet.Definition, pet.State, pet.Hunger, pet.FootPosition, pet.BehaviorOverrides);
+}
 
 /// <summary>
 /// Keeps list rows keyed by the immutable instance id. The projection does not
@@ -27,7 +35,7 @@ internal sealed class PetListProjection
 
     public void Add(PetInstance instance)
     {
-        _items[instance.InstanceId] = ToItem(instance);
+        _items[instance.InstanceId] = PetListItem.Capture(instance);
         EnsureSelection();
         Changed?.Invoke();
     }
@@ -48,11 +56,11 @@ internal sealed class PetListProjection
         Changed?.Invoke();
     }
 
-    public void Refresh(IEnumerable<PetInstance> instances)
+    public void Refresh(IEnumerable<PetListItem> instances)
     {
         var previousSelection = SelectedInstanceId;
         var previousOrder = _items.Keys.OrderBy(id => id).ToArray();
-        var next = instances.ToDictionary(instance => instance.InstanceId, ToItem);
+        var next = instances.ToDictionary(instance => instance.InstanceId);
         foreach (var stale in _items.Keys.Where(id => !next.ContainsKey(id)).ToArray())
             _items.Remove(stale);
         foreach (var pair in next)
@@ -74,6 +82,4 @@ internal sealed class PetListProjection
         if (SelectedInstanceId == Guid.Empty) SelectedInstanceId = null;
     }
 
-    private static PetListItem ToItem(PetInstance instance)
-        => new(instance.InstanceId, instance.Definition.Id, instance.Definition.DisplayName, instance.State, instance.Hunger);
 }

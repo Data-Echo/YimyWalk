@@ -8,5 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="..\..\src\YimyWalk.App\YimyWalk.App.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\YimyWalk.App\YimyWalk.App.csproj" />
+    <PackageReference Include="AntdUI" Version="2.4.12" />
+  </ItemGroup>
 </Project>

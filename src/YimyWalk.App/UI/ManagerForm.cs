@@ -4,25 +4,28 @@ using YimyWalk.App.UI.Pages;
 namespace YimyWalk.App.UI;
 
 /// <summary>
-/// The taskbar-facing shell. Pages are cached so navigation never resets their
+/// The on-demand tray manager. Pages are cached so navigation never resets their
 /// selection, scroll position, or an editor that is currently being used.
 /// </summary>
 internal sealed class ManagerForm : Form
 {
     private readonly AppHost _host;
     private readonly Panel _pageHost = new() { Dock = DockStyle.Fill, BackColor = UiTheme.Cream };
-    private readonly Label _pageTitle = new() { AutoSize = true, Font = UiTheme.SectionFont, ForeColor = UiTheme.Ink };
     private readonly Dictionary<ManagerPageId, ManagerPage> _pages = new();
-    private readonly Dictionary<ManagerPageId, Button> _navigation = new();
+    private readonly Dictionary<ManagerPageId, AntdUI.Button> _navigation = new();
     private ManagerPageId _selectedPage;
     private bool _allowClose;
+    private bool _refreshing;
+    private readonly System.Windows.Forms.Timer _refreshTimer = new() { Interval = 200 };
 
     public ManagerForm(AppHost host)
     {
         _host = host;
+        UiTheme.ConfigureAntd();
         Text = "YimyWalk";
         Icon = AppIcon.Load();
         AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleDimensions = new SizeF(96, 96);
         ClientSize = new Size(1120, 720);
         MinimumSize = new Size(900, 580);
         StartPosition = FormStartPosition.CenterScreen;
@@ -33,51 +36,68 @@ internal sealed class ManagerForm : Form
         KeyPreview = true;
 
         BuildShell();
-        _host.Session.InstanceAdded += OnSessionChanged;
-        _host.Session.InstanceRemoved += OnSessionChanged;
-        _host.Batch.Changed += OnBatchChanged;
+        _refreshTimer.Tick += OnRefreshTick;
+        VisibleChanged += (_, _) => UpdateRefreshSchedule();
+        Resize += (_, _) => UpdateRefreshSchedule();
         FormClosing += OnFormClosing;
-        FormClosed += OnFormClosed;
     }
 
     public ManagerPageId SelectedPage => _selectedPage;
 
     private void BuildShell()
     {
+        var root = new TableLayoutPanel { Name = "ShellLayout", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LogicalToDeviceUnits(UiTheme.SidebarWidth)));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        Controls.Add(root);
         var sidebar = new Panel
         {
-            Dock = DockStyle.Left,
-            Width = UiTheme.SidebarWidth,
+            Name = "Sidebar",
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
             BackColor = UiTheme.Yellow,
-            Padding = new Padding(UiTheme.Space12, UiTheme.Space16, UiTheme.Space12, UiTheme.Space12)
+            Padding = new Padding(UiTheme.Space12, UiTheme.Space16, UiTheme.Space12, LogicalToDeviceUnits(32))
         };
-        Controls.Add(sidebar);
+        root.Controls.Add(sidebar, 0, 0);
+
+        var sidebarLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        sidebarLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(82)));
+        sidebar.Controls.Add(sidebarLayout);
 
         var brand = new Label
         {
             Text = "YimyWalk",
-            Dock = DockStyle.Top,
             Height = 42,
-            Font = new Font("Segoe UI", 16f, FontStyle.Bold),
+            Font = UiTheme.BrandFont,
             ForeColor = UiTheme.Ink,
             TextAlign = ContentAlignment.MiddleLeft,
-            TabStop = false
+            TabStop = false,
+            Dock = DockStyle.Bottom
         };
-        sidebar.Controls.Add(brand);
 
-        var nav = new Panel { Dock = DockStyle.Top, Height = 5 * 44 + UiTheme.Space8, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
-        sidebar.Controls.Add(nav);
+        var nav = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
+        sidebarLayout.Controls.Add(nav, 0, 0);
         AddNavigation(nav, ManagerPageId.Settings, "设置");
         AddNavigation(nav, ManagerPageId.Interactions, "互动");
         AddNavigation(nav, ManagerPageId.Characters, "角色");
         AddNavigation(nav, ManagerPageId.Pets, "桌宠");
         AddNavigation(nav, ManagerPageId.Overview, "总览");
 
-        var footer = new Panel { Dock = DockStyle.Bottom, Height = 132, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
-        sidebar.Controls.Add(footer);
+        var footer = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
+        sidebarLayout.Controls.Add(footer, 0, 1);
         var explanation = new Label
         {
-            Text = "关闭主菜单后，桌宠仍会继续运行。",
+            Text = "点击托盘图标打开主菜单",
             AutoSize = false,
             Dock = DockStyle.Top,
             Height = 44,
@@ -85,18 +105,11 @@ internal sealed class ManagerForm : Form
             ForeColor = UiTheme.Ink
         };
         footer.Controls.Add(explanation);
-        var exit = UiTheme.CreateButton("退出 YimyWalk");
-        exit.Dock = DockStyle.Top;
-        exit.Margin = new Padding(0, UiTheme.Space8, 0, 0);
-        exit.Click += (_, _) => _host.ExitApplication();
-        footer.Controls.Add(exit);
+        footer.Controls.Add(brand);
 
-        var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Cream, Padding = Padding.Empty };
-        Controls.Add(content);
+        var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Cream, Padding = Padding.Empty, Margin = Padding.Empty };
+        root.Controls.Add(content, 1, 0);
         content.Controls.Add(_pageHost);
-        var header = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = UiTheme.Cream, Padding = new Padding(UiTheme.Space24, 14, UiTheme.Space24, 0) };
-        header.Controls.Add(_pageTitle);
-        content.Controls.Add(header);
 
         SelectPage(ManagerPageId.Overview);
     }
@@ -122,13 +135,14 @@ internal sealed class ManagerForm : Form
         _pageHost.SuspendLayout();
         try
         {
-            _pageHost.Controls.Clear();
-            _pageHost.Controls.Add(page);
+            if (page.Parent is null) _pageHost.Controls.Add(page);
+            foreach (var cached in _pages.Values) cached.Visible = ReferenceEquals(cached, page);
+            page.BringToFront();
             _selectedPage = pageId;
-            _pageTitle.Text = page.PageTitle;
             foreach (var pair in _navigation)
             {
-                pair.Value.BackColor = pair.Key == pageId ? UiTheme.Coral : UiTheme.Yellow;
+                pair.Value.DefaultBack = pair.Key == pageId ? UiTheme.Coral : UiTheme.Sidebar;
+                pair.Value.ForeColor = pair.Key == pageId ? UiTheme.NavInk : UiTheme.Ink;
                 pair.Value.AccessibleDescription = pair.Key == pageId ? "当前页面" : string.Empty;
             }
             page.RefreshFromHost();
@@ -171,31 +185,45 @@ internal sealed class ManagerForm : Form
 
     public void RefreshAllPages()
     {
-        foreach (var page in _pages.Values) page.RefreshFromHost();
+        if (_refreshing || IsDisposed || _host.IsExiting || !Visible || WindowState == FormWindowState.Minimized) return;
+        _refreshing = true;
+        try { if (_pages.TryGetValue(_selectedPage, out var page)) page.RefreshFromHost(); }
+        finally { _refreshing = false; }
     }
 
-    private void OnSessionChanged(YimyWalk.Core.Simulation.PetInstance _)
-        => RefreshAllPages();
+    private void OnRefreshTick(object? sender, EventArgs e) => RefreshAllPages();
 
-    private void OnBatchChanged() => RefreshAllPages();
+    private void UpdateRefreshSchedule()
+    {
+        if (IsDisposed || _host.IsExiting) return;
+        _refreshTimer.Enabled = Visible && WindowState != FormWindowState.Minimized;
+        if (_refreshTimer.Enabled) RefreshAllPages();
+    }
+
+    public void StopRefreshing() => _refreshTimer.Stop();
+
+    public void HideToTray()
+    {
+        _refreshTimer.Stop();
+        Hide();
+    }
 
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
     {
-        if (_allowClose || _host.IsExiting || e.CloseReason is CloseReason.WindowsShutDown or CloseReason.TaskManagerClosing)
+        if (e.CloseReason is CloseReason.WindowsShutDown or CloseReason.TaskManagerClosing)
+        {
+            _host.MarkExiting();
+            _host.ExitThread();
+            return;
+        }
+        if (_allowClose || _host.IsExiting)
         {
             _host.MarkExiting();
             return;
         }
 
         e.Cancel = true;
-        WindowState = FormWindowState.Minimized;
-    }
-
-    private void OnFormClosed(object? sender, FormClosedEventArgs e)
-    {
-        _host.Session.InstanceAdded -= OnSessionChanged;
-        _host.Session.InstanceRemoved -= OnSessionChanged;
-        _host.Batch.Changed -= OnBatchChanged;
+        _host.HideManagerToTray();
     }
 
     public void AllowClose() => _allowClose = true;
@@ -204,6 +232,9 @@ internal sealed class ManagerForm : Form
     {
         if (disposing)
         {
+            _refreshTimer.Stop();
+            _refreshTimer.Tick -= OnRefreshTick;
+            _refreshTimer.Dispose();
             foreach (var page in _pages.Values) page.Dispose();
             _pages.Clear();
             Icon?.Dispose();

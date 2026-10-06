@@ -30,3 +30,16 @@
 - No network access, startup registration, administrator privileges, or real desktop-file operations.
 - The package is self-contained and offline; no separate runtime installation is required.
 - Negative-coordinate monitors, physical monitor hot-plug, sleep/wake, restricted-permission sessions, and long-duration resource trends remain unverified.
+
+# YimyWalk v0.1.8
+
+## Included
+
+- AntdUI 2.4.12 unified the WinForms management shell across overview, pets, characters, interactions, and settings.
+- Fixed card measurement and page-internal clipping; added content-driven spacing, scrolling, idle1 previews, modern Switch/Select/InputNumber controls, and a default-role plus creation-count overview action.
+- Preserved the tray-first lifecycle, stable instance deletion, 200 ms visible manager sampling, global/instance setting semantics, and offline self-contained Windows x64 packaging.
+
+## Verification boundary
+
+- Core tests, ManagerUiSmoke layout assertions, application builds, and the Windows input smoke passed in the current Windows session (DPI 120 / 125%).
+- 100%, 150%, 200% DPI switching, minimum-size/maximize matrix, and desktop visual acceptance remain unverified.

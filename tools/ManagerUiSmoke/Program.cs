@@ -1,0 +1,199 @@
+using System.Collections;
+using System.Diagnostics;
+using System.Reflection;
+using System.Windows.Forms;
+
+internal static class Program
+{
+    const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    static object host = null!;
+    static Form manager = null!;
+    [STAThread]
+    static int Main(string[] args)
+    {
+        global::ApplicationConfiguration.Initialize();
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+        var app = Assembly.Load("YimyWalk.App");
+        host = Activator.CreateInstance(app.GetType("YimyWalk.App.Host.AppHost")!, true)!;
+        var temp = Path.Combine(Path.GetTempPath(), "YimyWalk-manager-smoke-" + Guid.NewGuid().ToString("N"));
+        // Isolate all saves from the user's settings, including failure cases.
+        var store = Activator.CreateInstance(app.GetType("YimyWalk.App.Settings.SettingsStore")!, new object[] { temp });
+        host.GetType().GetField("_settingsStore", Flags)!.SetValue(host, store);
+        try
+        {
+            Call(host, "Start");
+            manager = (Form)Field(host, "_manager");
+            Require(!manager.Visible, "manager starts hidden from tray");
+            Call(host, "ShowManager");
+            Pump(100);
+            if (args.Contains("--baseline"))
+            {
+                foreach (var baselinePage in new[] { "Overview", "Pets", "Characters", "Interactions", "Settings" })
+                {
+                    Page(baselinePage);
+                    SaveShot("antd-" + baselinePage.ToLowerInvariant());
+                    AssertPageLayout(baselinePage);
+                }
+                Page("Characters");
+                foreach (var c in Descendants(manager).Where(c => c.Visible && (c is Label || c is Button)))
+                    Console.WriteLine($"BASELINE {c.GetType().Name} {c.Text} bounds={c.Bounds} preferred={c.GetPreferredSize(new Size(c.Width, 0))} parent={c.Parent?.ClientSize}");
+                Require(Descendants(manager).OfType<Label>().Count(c => c.Visible && c.Text == "角色") == 1, "one main heading per page");
+                return 0;
+            }
+            foreach (var page in new[] { "Overview", "Pets", "Characters", "Interactions", "Settings" })
+            {
+                Page(page);
+                var ph = (Control)Field(manager, "_pageHost");
+                Console.WriteLine($"GEOMETRY {page} dpi={manager.DeviceDpi} pageHost={manager.RectangleToClient(ph.RectangleToScreen(ph.ClientRectangle))}");
+            }
+            Page("Overview");
+            SaveShot("overview");
+            foreach (var label in Descendants(manager).OfType<Label>().Where(label => label.Text.Contains("YimyWalk", StringComparison.Ordinal)))
+                Console.WriteLine($"LABEL text={label.Text} bounds={label.Bounds} parent={label.Parent?.GetType().Name} parentBounds={label.Parent?.Bounds} visible={label.Visible}");
+            var sidebar = Descendants(manager).First(control => control.Name == "Sidebar");
+            Console.WriteLine($"SIDEBAR bounds={sidebar.Bounds} client={sidebar.ClientSize}");
+            manager.Close();
+            Pump(40);
+            Require(!manager.Visible && !manager.IsDisposed, "close hides manager to tray");
+            for (var round = 0; round < 20; round++)
+            {
+                Call(host, "ShowManager");
+                Pump(10);
+                Call(host, "HideManagerToTray");
+                Pump(10);
+            }
+            Call(host, "ShowManager");
+            Page("Pets");
+            Call(host, "QueueCreate", "cat", 100);
+            Call(host, "ClearPets");
+            Pump(120);
+            Require((int)Prop(host, "ActivePetCount") == 0 && (int)Prop(host, "PendingCreationCount") == 0, "clear cancels queued creation");
+            Console.WriteLine("CLEAR pending_queue=PASS");
+            Call(host, "CreateMany", "cat", 15);
+            Call(host, "CreateMany", "slime", 15);
+            Pump(200);
+            var list = Descendants(manager).OfType<ListView>().Single(listView => listView.Visible);
+            list.Items[0].Selected = true;
+            Pump(40);
+            var runtime = Descendants(manager).OfType<Label>().First(label => label.Visible && label.Text.StartsWith("状态：", StringComparison.Ordinal));
+            var runtimeBefore = runtime.Text;
+            Pump(500);
+            Require(runtime.Text != runtimeBefore, "visible manager samples changing runtime state without input");
+            Console.WriteLine("AUTO_REFRESH interval=200ms DETAIL_STATE=PASS");
+            SaveShot("pets");
+            for (var step = 0; list.Items.Count > 0; step++)
+            {
+                var index = step < 4 ? 0 : step % 2 == 0 ? list.Items.Count - 1 : list.Items.Count / 2;
+                foreach (ListViewItem row in list.Items) row.Selected = false;
+                var target = list.Items[index];
+                target.Selected = true;
+                target.EnsureVisible();
+                var id = (Guid)target.Tag!;
+                Console.WriteLine($"DELETE step={step} count={list.Items.Count} index={index} id={id}");
+                ((IButtonControl)ButtonControls(manager).Single(b => b.Text == "删除选中")).PerformClick();
+                Pump(30);
+                Require(Call(host, "FindPet", id) is null, "deleted target id");
+                Require(list.Items.Count == (int)Prop(host, "ActivePetCount"), "list/core counts");
+            }
+            Console.WriteLine("PASS mixed head/middle/tail deletion");
+            return 0;
+        }
+        catch (Exception error) { Console.WriteLine(error); return 1; }
+        finally
+        {
+            ((IDisposable)host).Dispose();
+            if (Directory.Exists(temp)) Directory.Delete(temp, true);
+        }
+    }
+    static void Page(string name)
+    {
+        var type = manager.GetType().Assembly.GetType("YimyWalk.App.UI.ManagerPageId")!;
+        Call(manager, "SelectPage", Enum.Parse(type, name));
+        Pump(30);
+    }
+    static object Prop(object obj, string name) => obj.GetType().GetProperty(name, Flags)!.GetValue(obj)!;
+    static object Field(object obj, string name) => obj.GetType().GetField(name, Flags)!.GetValue(obj)!;
+    static object? Call(object obj, string name, params object[] args) => obj.GetType().GetMethod(name, Flags)!.Invoke(obj, args);
+    static IEnumerable<Control> Descendants(Control root) => root.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(Descendants(c)));
+    static IEnumerable<Control> ButtonControls(Control root) => Descendants(root).Where(control => control is IButtonControl);
+    static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+    static void SaveShot(string name)
+    {
+        var dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../artifacts/ui-smoke"));
+        Directory.CreateDirectory(dir);
+        using var bitmap = new Bitmap(manager.ClientSize.Width, manager.ClientSize.Height);
+        manager.DrawToBitmap(bitmap, manager.ClientRectangle);
+        bitmap.Save(Path.Combine(dir, name + ".png"), System.Drawing.Imaging.ImageFormat.Png);
+        Console.WriteLine($"SCREENSHOT {Path.Combine(dir, name + ".png")}");
+    }
+    static void AssertPageLayout(string name)
+    {
+        var page = VisiblePage();
+        var required = name switch
+        {
+            "Overview" => new[] { "YimyWalk", "桌面状态", "快捷操作", "创建桌宠" },
+            "Pets" => new[] { "桌宠", "未选择桌宠" },
+            "Characters" => new[] { "角色", "角色列表", "角色 ID：" },
+            "Interactions" => new[] { "互动", "全局默认", "运行级限制" },
+            "Settings" => new[] { "设置", "应用外观与启动行为", "保存状态" },
+            _ => Array.Empty<string>()
+        };
+        foreach (var text in required)
+            Require(FindText(page, text) is { Visible: true, Height: > 0 }, $"{name} visible text: {text}");
+
+        foreach (var label in Descendants(page).OfType<Label>().Where(label => label.Visible && label.Text.Length > 0))
+        {
+            if (label.Parent is ScrollableControl scroll && scroll.AutoScroll && !scroll.ClientRectangle.Contains(label.Bounds))
+            {
+                scroll.ScrollControlIntoView(label);
+                Application.DoEvents();
+            }
+            Require(label.Parent is not null && label.Parent.ClientRectangle.Contains(label.Bounds),
+                $"{name} label is inside parent: {label.Text}");
+            var preferred = label.GetPreferredSize(new Size(Math.Max(1, label.Width), 0));
+            Require(preferred.Height <= label.Height + 2, $"{name} label is not vertically clipped: {label.Text}");
+        }
+        foreach (var siblings in Descendants(page).Where(control => control.Visible && control is Label).GroupBy(control => control.Parent))
+        {
+            if (siblings.Key is Panel heading && heading.Height <= 80) continue;
+            var labels = siblings.Cast<Label>().ToArray();
+            for (var i = 0; i < labels.Length; i++)
+            for (var j = i + 1; j < labels.Length; j++)
+                Require(!labels[i].Bounds.IntersectsWith(labels[j].Bounds), $"{name} sibling labels do not overlap: {labels[i].Text} / {labels[j].Text}");
+        }
+
+        if (name == "Interactions")
+        {
+            var switchControls = Descendants(page).Where(control => control.GetType().FullName?.Contains("AntdUI", StringComparison.Ordinal) == true).ToArray();
+            Require(switchControls.Count(control => control.GetType().Name == "Switch") >= 5, "interactions uses AntdUI switches");
+            Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber"), "interactions uses AntdUI numeric input");
+            Require(page is ScrollableControl scrollable && scrollable.VerticalScroll.Maximum > 0, "interactions page exposes vertical scrolling for full content");
+        }
+        if (name == "Settings")
+        {
+            Require(Descendants(page).Any(control => control.GetType().Name == "Switch"), "settings uses AntdUI switch");
+            Require(Descendants(page).Any(control => control.GetType().Name == "Select"), "settings uses AntdUI select");
+            Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber"), "settings uses AntdUI numeric input");
+        }
+        if (name == "Characters")
+        {
+            var roleList = Descendants(page).OfType<ListView>().SingleOrDefault(list => list.Visible);
+            Require(roleList is not null && roleList.Columns.Count >= 4 && roleList.Items.Count > 0, "characters uses a role list with status columns");
+            Require(Descendants(page).Any(control => control.GetType().Name == "Button" && control.Text?.Contains("默认", StringComparison.Ordinal) == true), "characters has default-role action");
+            var preview = Descendants(page).FirstOrDefault(control => control.GetType().Name == "CharacterFramePreview");
+            Require(preview is not null && preview.Width >= 220 && preview.Height >= 220, "character preview has usable size");
+        }
+    }
+    static Control VisiblePage()
+    {
+        var pageHost = (Control)Field(manager, "_pageHost");
+        return pageHost.Controls.Cast<Control>().Single(page => page.Visible);
+    }
+    static Control? FindText(Control root, string text)
+        => Descendants(root).FirstOrDefault(control => control.Text.Equals(text, StringComparison.Ordinal) || control.Text.StartsWith(text, StringComparison.Ordinal));
+    static void Pump(int milliseconds)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < milliseconds) { Application.DoEvents(); Thread.Sleep(5); }
+    }
+}

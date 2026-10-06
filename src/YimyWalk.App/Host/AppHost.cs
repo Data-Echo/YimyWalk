@@ -56,7 +56,7 @@ internal sealed class AppHost : ApplicationContext
             return _session.Create(definition.Id);
         });
         _manager = new ManagerForm(this);
-        MainForm = _manager;
+        // ApplicationContext owns the message loop independently of manager visibility.
         _settingsSave.Changed += OnSettingsSaveChanged;
         _tray = new TrayIconHost(this);
     }
@@ -89,6 +89,9 @@ internal sealed class AppHost : ApplicationContext
     public int PendingCreationCount => _batch.PendingCount;
     public bool IsPaused => _session.IsPaused;
     public IReadOnlyCollection<PetInstance> ActivePets => _session.Instances;
+    // Simulation, creation, deletion and UI sampling all run serially on the WinForms thread.
+    // Copy values before controls are updated; no queued or mutable snapshots reach the page.
+    internal PetListItem[] CapturePets() => _session.Instances.Select(PetListItem.Capture).ToArray();
     public bool DefaultWalkEnabled
     {
         get => _session.DefaultWalkEnabled;
@@ -232,8 +235,7 @@ internal sealed class AppHost : ApplicationContext
         _manager.RefreshCharacters();
         _manager.SetReloadStatus(definitions.Count, _catalog.LastFailures.Count);
         _manager.SetSettingsStatus(GetSettingsStatus());
-        _manager.Show();
-        _manager.SelectPage(ManagerPageId.Overview);
+        // The tray is the primary entry. Do not show and then hide a startup window.
     }
 
     public IReadOnlyList<CharacterScanFailure> ReloadCharacters()
@@ -327,11 +329,18 @@ internal sealed class AppHost : ApplicationContext
 
     public void ShowManager()
     {
+        if (IsExiting || _disposed) return;
         if (_manager.WindowState == FormWindowState.Minimized)
             _manager.WindowState = FormWindowState.Normal;
         _manager.Show();
+        _manager.RefreshAllPages();
         _manager.BringToFront();
         _manager.Activate();
+    }
+
+    public void HideManagerToTray()
+    {
+        if (!IsExiting && !_disposed) _manager.HideToTray();
     }
 
     public void SetPetsVisible(bool visible)
@@ -342,7 +351,10 @@ internal sealed class AppHost : ApplicationContext
 
     public void ExitApplication()
     {
+        if (_disposed) return;
         MarkExiting();
+        _timer.Stop();
+        _manager.StopRefreshing();
         _batch.Cancel();
         _manager.AllowClose();
         if (!_manager.IsDisposed) _manager.Close();

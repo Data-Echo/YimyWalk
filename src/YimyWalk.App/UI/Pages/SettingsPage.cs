@@ -6,12 +6,12 @@ namespace YimyWalk.App.UI.Pages;
 
 internal sealed class SettingsPage : ManagerPage
 {
-    private readonly NumericUpDown _scale = new() { Minimum = 0.1m, Maximum = 8m, DecimalPlaces = 1, Increment = 0.1m, Width = 90 };
-    private readonly ComboBox _display = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
-    private readonly CheckBox _landing = new() { Text = "允许宠物落到可见窗口顶部", AutoSize = true };
+    private readonly AntdUI.InputNumber _scale = UiTheme.CreateInputNumber(0.1m, 8m, 0.1m, 1, 120);
+    private readonly AntdUI.Select _display = UiTheme.CreateSelect(300);
+    private readonly AntdUI.Switch _landing = UiTheme.CreateSwitch();
     private readonly Label _status = UiTheme.CreateBodyLabel();
     private readonly Label _diagnostic = UiTheme.CreateMutedLabel();
-    private readonly Button _retry = UiTheme.CreateButton("重试保存");
+    private readonly AntdUI.Button _retry = UiTheme.CreateButton("重试保存");
     private bool _syncing;
 
     public SettingsPage(AppHost host) : base(host)
@@ -20,35 +20,42 @@ internal sealed class SettingsPage : ManagerPage
         AddHeading(layout, "设置", "应用级选项自动保存；单只桌宠覆盖不会出现在这里。");
         var card = UiTheme.CreateCard();
         card.Dock = DockStyle.Top;
-        card.Controls.Add(new Label { Text = "应用外观与启动行为", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top });
+        card.Height = 264;
+        var cardTitle = new Label { Text = "应用外观与启动行为", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top };
         var grid = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         AddGridRow(grid, "桌宠显示缩放", _scale, "0.1–8.0；修改后立即应用，连续调整会合并保存。");
         AddGridRow(grid, "新建桌宠所在显示器", _display, "跟随系统或选择当前显示器；只影响后续创建位置。");
+        AddGridRow(grid, "允许落到可见窗口顶部", _landing, "开启后，桌宠可以落在其他可见窗口顶部；不影响拖拽和重力。");
         card.Controls.Add(grid);
-        card.Controls.Add(_landing);
+        card.Controls.Add(cardTitle);
         AddRow(layout, card);
 
         var saveCard = UiTheme.CreateCard();
         saveCard.Dock = DockStyle.Top;
-        saveCard.Controls.Add(new Label { Text = "保存状态", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top });
+        saveCard.Height = 142;
+        var saveTitle = new Label { Text = "保存状态", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top };
         _status.Dock = DockStyle.Top;
+        _diagnostic.Dock = DockStyle.Top;
         _retry.Dock = DockStyle.Top;
         _retry.Margin = new Padding(0, UiTheme.Space8, 0, 0);
         _retry.Click += (_, _) => Host.RetrySettingsSave();
         saveCard.Controls.Add(_retry);
-        saveCard.Controls.Add(_status);
         saveCard.Controls.Add(_diagnostic);
+        saveCard.Controls.Add(_status);
+        saveCard.Controls.Add(saveTitle);
         AddRow(layout, saveCard);
 
         _scale.ValueChanged += (_, _) => { if (!_syncing) Host.GlobalScale = (float)_scale.Value; };
         _display.SelectedIndexChanged += (_, _) =>
         {
-            if (_syncing || _display.SelectedItem is not DisplayChoice choice) return;
+            if (_syncing || _display.SelectedValue is not DisplayChoice choice) return;
             Host.SetPreferredDisplay(choice.Id);
         };
         _landing.CheckedChanged += (_, _) => { if (!_syncing) Host.WindowLandingEnabled = _landing.Checked; };
+        _landing.CheckedText = "开";
+        _landing.UnCheckedText = "关";
     }
 
     public override string PageTitle => "设置";
@@ -118,7 +125,7 @@ internal sealed class SettingsPage : ManagerPage
         var row = grid.RowCount++;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         grid.Controls.Add(UiTheme.CreateBodyLabel(label), 0, row);
-        grid.Controls.Add(editor, 1, row);
+        grid.Controls.Add(UiTheme.WrapSwitch(editor), 1, row);
         var helpLabel = UiTheme.CreateMutedLabel(help);
         grid.RowCount++;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));

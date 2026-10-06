@@ -1,3 +1,5 @@
+> **当前规则覆盖（2026-10-06）**：本计划早期任务栏启动/最小化验收条目已被 M4.1 托盘生命周期任务替代；执行和验收以文末 M4.1 为准。
+
 # YimyWalk 主菜单 UI Shell Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
@@ -363,3 +365,30 @@ Expected: diff check 无内容错误，测试退出码为 0；随后提交文档
 - 布尔覆盖是 Inherit/Enabled/Disabled；数值覆盖是 Inherit/自定义数值。
 - 全局保存失败、实例临时覆盖、清空队列顺序、稳定 InstanceId 选择和 100 实例增量刷新均有任务和验证。
 - 未新增真实勿扰、静音、快捷方式或通知中心，避免没有业务闭环的假控件。
+
+## M4.1：布局、实例同步与托盘生命周期修复（2026-10-06）
+
+- 修改范围：`ManagerForm` 根布局、侧栏品牌区、五页内容宿主；`PetsPage`/`PetListProjection`；`AppHost`/`TrayIconHost`；桌面回归 smoke。
+- 依赖：现有 `PetSession` 稳定 `PetInstanceId`、`BatchCreationQueue`、`ApplicationContext` 和角色帧缓存；不改 Core 物理行为。
+- 真实业务绑定：页面每 200ms 读取 AppHost 在 UI 线程复制的运行快照；删除和清空仍走 `AppHost.RemovePet/ClearPets`；托盘入口复用 `NotifyIcon`。
+- 验证方法：`ManagerUiSmoke` 覆盖五页几何边界、混合角色头/中/尾删除、ID/数量一致、自动状态采样；`DesktopInputSmoke` 更新启动隐藏、托盘打开、×隐藏和退出断言；构建后运行核心测试。
+- 完成条件：列表不因选择事件重入抛索引异常；选择、详情和滚动以稳定 ID 保持；管理窗口隐藏不暂停模拟且无重复刷新；启动无主菜单窗口；品牌底部无退出按钮；文档区分代码/构建/逻辑测试/Windows 桌面状态。
+
+旧的 M2 计划中将关闭动作解释为最小化、启动显示总览的条目已被本轮要求替代，不再作为验收条件。第二显示器、DPI 100/125/150/200 矩阵、真实通知区域左键仍须按实际运行结果记录，不能以逻辑测试代替。
+
+## 2026-10-06 AntdUI UI 重构实施补充（当前计划）
+
+以下任务覆盖本轮成品约束；旧计划中与托盘主入口冲突的启动/关闭验收条目已被 2026-10-06 生命周期交接替代。
+
+| 任务 | 修改范围 | 依赖 | 真实业务绑定 | 验证与完成条件 |
+|---|---|---|---|---|
+| A1 依赖与主题 | `YimyWalk.App.csproj`、`UiTheme.cs`、第三方声明 | 当前 .NET 8 WinForms | AntdUI 2.4.12；统一颜色、字体、间距和控件构造 | 还原/构建成功；按钮、Switch、Select、InputNumber、Panel 在 smoke 中出现；Apache-2.0 记录完整 |
+| A2 卡片测量与页头 | `ManagerPage.cs`、五页 | A1 | 页面仍使用 ManagerForm/AppHost 导航和刷新入口 | 每页一个主标题；卡片子控件不被父级裁切；长中文和滚动末尾可访问 |
+| A3 角色与互动基准 | `CharactersPage.cs`、`InteractionsPage.cs` | A1/A2 | 角色刷新、默认角色、全局默认、运行级限制和保存状态调用现有 AppHost | 角色 idle1/index 0 预览；Switch/InputNumber 真实改值；刷新失败保留旧定义；125% 截图通过 |
+| A4 总览、桌宠、设置统一 | `OverviewPage.cs`、`PetsPage.cs`、`SettingsPage.cs` | A2/A3 | 创建队列、稳定 PetInstanceId、增量快照、全局 SettingsStore 保存不变 | 关键空态、详情、设置行和保存失败文案可见；不重建列表、不覆盖编辑控件 |
+| A5 回归工具 | `tools/ManagerUiSmoke`、`tools/DesktopInputSmoke` | A1–A4 | UI 只调用 AppHost；桌面 smoke 走真实托盘、宠物窗和退出路径 | ManagerUiSmoke 通过五页布局/组件/滚动断言；DesktopInputSmoke 通过菜单、开关、预览、清空、退出 |
+| A6 发布与记录 | `scripts/build-yimywalk.ps1`、`RELEASE_NOTES.md`、`docs/STATUS.md` | A5 | 发布仍为离线 self-contained win-x64，不改变角色或 Core | 生成 `YimyWalk.exe`；记录实际截图、构建、逻辑测试、Windows 已验证和未验证矩阵 |
+
+本轮不扩展角色编辑器、联网、通知中心、主题编辑器、真实快捷方式或宠物渲染；AntdUI 仅用于管理界面展示与控件交互。
+
+A3 的角色实现已落地为稳定 ID 列表而非下拉框：列表显示名称、ID、有效状态和默认标记；右侧详情包含 idle1 预览、基础参数、刷新和显式默认操作。`ManagerUiSmoke` 与 `DesktopInputSmoke` 均覆盖了浏览不改默认、显式设置默认以及刷新/预览路径。

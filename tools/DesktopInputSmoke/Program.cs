@@ -27,16 +27,18 @@ var originalDialogueEnabled = true;
 try
 {
     Invoke(hostType, host, "Start");
-    var shellManager = (Form)Property(host, "MainForm");
+    var shellManager = (Form)PrivateField(host, "_manager");
+    Require(!shellManager.Visible, "manager starts hidden; tray is primary entry");
     Require(shellManager.ShowInTaskbar, "manager is a taskbar window");
     Require(shellManager.ClientSize.Width >= 1120 && shellManager.ClientSize.Height >= 720, "manager default size is reviewable");
-    var navigationLabels = Descendants(shellManager).OfType<Button>().Select(button => button.Text).ToHashSet(StringComparer.Ordinal);
-    foreach (var label in new[] { "总览", "桌宠", "角色", "互动", "设置", "退出 YimyWalk" })
+    var navigationLabels = ButtonControls(shellManager).Select(button => button.Text).ToHashSet(StringComparer.Ordinal);
+    foreach (var label in new[] { "总览", "桌宠", "角色", "互动", "设置" })
         Require(navigationLabels.Contains(label), $"manager contains {label}");
     Require(Property(shellManager, "SelectedPage").ToString() == "Overview", "manager starts on overview");
+    Invoke(hostType, host, "ShowManager");
     shellManager.Close();
     Pump(50);
-    Require(shellManager.WindowState == FormWindowState.Minimized && !shellManager.IsDisposed, "manager close minimizes and keeps host alive");
+    Require(!shellManager.Visible && !shellManager.IsDisposed, "manager close hides to tray and keeps host alive");
     Invoke(hostType, host, "ShowManager");
     Pump(50);
     Require(shellManager.WindowState == FormWindowState.Normal, "manager restore keeps the window alive");
@@ -48,25 +50,25 @@ try
     Require(Property(shellManager, "SelectedPage").ToString() == "Overview", "all manager pages create and return to overview");
     var originalRoleId = (string)Property(host, "SelectedRoleId");
     Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Characters"));
-    var roleCombo = Descendants(shellManager).OfType<ComboBox>().Single();
-    var alternateRoleIndex = Enumerable.Range(0, roleCombo.Items.Count)
-        .First(index => !roleCombo.Items[index]!.ToString()!.StartsWith(originalRoleId + " ", StringComparison.OrdinalIgnoreCase));
-    roleCombo.SelectedIndex = alternateRoleIndex;
+    var roleList = Descendants(shellManager).OfType<ListView>().Single(list => list.Visible);
+    var alternateRole = roleList.Items.Cast<ListViewItem>()
+        .First(row => !string.Equals(row.SubItems[1].Text, originalRoleId, StringComparison.OrdinalIgnoreCase));
+    alternateRole.Selected = true;
     Pump(50);
     Require(string.Equals((string)Property(host, "SelectedRoleId"), originalRoleId, StringComparison.OrdinalIgnoreCase), "browsing a role does not change the creation default");
-    var setRole = Descendants(shellManager).OfType<Button>().Single(button => button.Text == "设为下次创建角色");
-    setRole.PerformClick();
+    var setRole = ButtonControls(shellManager).Single(button => button.Text == "设为默认角色");
+    ((IButtonControl)setRole).PerformClick();
     Pump(50);
     var selectedRoleAfterSet = (string)Property(host, "SelectedRoleId");
     Require(!string.Equals(selectedRoleAfterSet, originalRoleId, StringComparison.OrdinalIgnoreCase), "explicit role action changes the creation default");
-    roleCombo.SelectedIndex = Enumerable.Range(0, roleCombo.Items.Count)
-        .First(index => roleCombo.Items[index]!.ToString()!.StartsWith(originalRoleId + " ", StringComparison.OrdinalIgnoreCase));
-    setRole.PerformClick();
+    roleList.Items.Cast<ListViewItem>()
+        .Single(row => string.Equals(row.SubItems[1].Text, originalRoleId, StringComparison.OrdinalIgnoreCase)).Selected = true;
+    ((IButtonControl)setRole).PerformClick();
     Pump(50);
     Require(string.Equals((string)Property(host, "SelectedRoleId"), originalRoleId, StringComparison.OrdinalIgnoreCase), "creation default can be restored explicitly");
     Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Overview"));
     Console.WriteLine("ROLE BROWSE_EXPLICIT_DEFAULT=PASS");
-    Console.WriteLine("MANAGER SHELL=PASS TASKBAR_NAV_CLOSE_MINIMIZE");
+    Console.WriteLine("MANAGER SHELL=PASS TRAY_NAV_CLOSE_HIDE");
     Require(Property(host, "DefaultWalkEnabled") is bool, "global default walk setting exists");
     Require(Property(host, "DefaultDialogueEnabled") is bool, "global default dialogue setting exists");
     Require(Property(host, "DialogueEnabled") is bool, "global dialogue gate exists");
@@ -84,15 +86,15 @@ try
     Require((int)Property(host, "DialogueBubbleCount") > 0, "created pet shows a dialogue bubble");
     Console.WriteLine("DIALOGUE CREATED_BUBBLE=PASS");
     Invoke(shellManager.GetType(), shellManager, "SelectPage", Enum.Parse(pageType, "Pets"));
-    var petList = Descendants(shellManager).OfType<ListView>().Single();
+    var petList = Descendants(shellManager).OfType<ListView>().Single(list => list.Visible);
     Require(petList.Items.Count == 1, "pets page lists the running instance");
     petList.Items[0].Selected = true;
     Pump(50);
-    var preview = Descendants(shellManager).Single(control => control.GetType().Name == "CharacterFramePreview");
+    var preview = Descendants(shellManager).Single(control => control.Visible && control.GetType().Name == "CharacterFramePreview");
     Require(Convert.ToInt32(Property(preview, "CurrentFrameIndex")) == 0, "pet preview uses idle1 frame index 0");
-    var overrideCombos = Descendants(shellManager).OfType<ComboBox>().Where(combo => combo.Items.Count == 3).ToArray();
+    var overrideCombos = Descendants(shellManager).Where(control => control.Visible && control.GetType().Name == "Select" && ItemsOf(control).Count == 3).ToArray();
     Require(overrideCombos.Length == 2, "pets page exposes two boolean override controls");
-    overrideCombos[0].SelectedIndex = 2;
+    SetProperty(overrideCombos[0], "SelectedIndex", 2);
     Pump(50);
     var selectedInstance = First(Property(Property(host, "Session"), "Instances"));
     var behaviorOverrides = Property(selectedInstance, "BehaviorOverrides");
@@ -248,72 +250,70 @@ try
     Console.WriteLine("LIFECYCLE HIDE_SHOW=PASS CLEAR=PASS");
 
     var manager = (Form)PrivateField(host, "_manager");
-    ClickTrayMenuItem((NotifyIcon)icon, "打开管理器");
+    ClickTrayMenuItem((NotifyIcon)icon, "打开主菜单");
     Require(manager.Visible, "tray menu opens manager");
     Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Characters"));
-    var refreshButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "刷新角色");
+    var refreshButton = ButtonControls(manager).SingleOrDefault(button => button.Text == "刷新角色");
     Require(refreshButton is not null, "manager exposes refresh role button");
-    refreshButton!.PerformClick();
+    ((IButtonControl)refreshButton!).PerformClick();
     Pump(100);
     Console.WriteLine("MANAGER REFRESH_BUTTON=PASS");
     Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Settings"));
-    var landingToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "允许宠物落到可见窗口顶部");
+    var landingToggle = Descendants(manager).SingleOrDefault(control => control.Visible && control.GetType().Name == "Switch");
     Require(landingToggle is not null, "manager exposes window landing toggle");
-    landingToggle!.Checked = true;
+    SetProperty(landingToggle!, "Checked", true);
     Pump(50);
     Require((bool)Property(host, "WindowLandingEnabled"), "landing toggle enables window landing");
-    landingToggle.Checked = false;
+    SetProperty(landingToggle!, "Checked", false);
     Pump(50);
     Require(!(bool)Property(host, "WindowLandingEnabled"), "landing toggle disables window landing");
     Console.WriteLine("MANAGER LANDING_TOGGLE=PASS");
     Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Interactions"));
-    var hungerToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用饥饿增长");
-    Require(hungerToggle is not null, "manager exposes hunger toggle");
-    hungerToggle!.Checked = false;
+    var interactionSwitches = Descendants(manager).Where(control => control.Visible && control.GetType().Name == "Switch").ToArray();
+    Require(interactionSwitches.Length >= 5, "manager exposes all interaction switches");
+    var hungerToggle = interactionSwitches.ElementAtOrDefault(2) ?? throw new InvalidOperationException("manager exposes hunger toggle");
+    SetProperty(hungerToggle, "Checked", false);
     Pump(50);
     Require(!(bool)Property(host, "HungerEnabled"), "hunger toggle disables growth");
-    hungerToggle.Checked = true;
+    SetProperty(hungerToggle, "Checked", true);
     Pump(50);
     Require((bool)Property(host, "HungerEnabled"), "hunger toggle enables growth");
     Console.WriteLine("MANAGER HUNGER_TOGGLE=PASS");
-    var dialogueToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text.StartsWith("允许显示自动气泡", StringComparison.Ordinal));
-    Require(dialogueToggle is not null, "manager exposes dialogue toggle");
-    dialogueToggle!.Checked = false;
+    var dialogueToggle = interactionSwitches.ElementAtOrDefault(4) ?? throw new InvalidOperationException("manager exposes dialogue toggle");
+    SetProperty(dialogueToggle, "Checked", false);
     Pump(50);
     Require(!(bool)Property(host, "DialogueEnabled"), "dialogue toggle disables bubbles");
-    dialogueToggle.Checked = true;
+    SetProperty(dialogueToggle, "Checked", true);
     Pump(50);
     Require((bool)Property(host, "DialogueEnabled"), "dialogue toggle enables bubbles");
     Console.WriteLine("MANAGER DIALOGUE_TOGGLE=PASS");
-    var walkToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "默认允许主动走动");
-    Require(walkToggle is not null, "manager exposes default walk toggle");
-    walkToggle!.Checked = false;
+    var walkToggle = interactionSwitches.ElementAtOrDefault(0) ?? throw new InvalidOperationException("manager exposes default walk toggle");
+    SetProperty(walkToggle, "Checked", false);
     Pump(50);
     Require(!(bool)Property(host, "DefaultWalkEnabled"), "walk toggle disables default walking");
-    walkToggle.Checked = true;
+    SetProperty(walkToggle, "Checked", true);
     Pump(50);
     Require((bool)Property(host, "DefaultWalkEnabled"), "walk toggle enables default walking");
-    var activityRate = Descendants(manager).OfType<NumericUpDown>().SingleOrDefault(control => control.Minimum == 0.1m && control.Maximum == 4m);
+    var activityRate = Descendants(manager).SingleOrDefault(control => control.Visible && control.GetType().Name == "InputNumber" && Convert.ToDecimal(Property(control, "Minimum")) == 0.1m && Convert.ToDecimal(Property(control, "Maximum")) == 4m);
     Require(activityRate is not null, "manager exposes activity rate control");
-    activityRate!.Value = 1.4m;
+    SetProperty(activityRate!, "Value", 1.4m);
     Pump(400);
     Require(Math.Abs((float)Property(host, "ActivityRate") - 1.4f) < 0.01f, "activity rate control updates global default");
     Console.WriteLine("MANAGER WALK_ACTIVITY_CONTROLS=PASS");
-    var externalToggle = Descendants(manager).OfType<CheckBox>().SingleOrDefault(button => button.Text == "启用应用切换反馈");
-    Require(externalToggle is not null, "manager exposes external event toggle");
-    externalToggle!.Checked = true;
+    var externalToggle = interactionSwitches.ElementAtOrDefault(3) ?? throw new InvalidOperationException("manager exposes external event toggle");
+    SetProperty(externalToggle, "Checked", true);
     Pump(50);
     Require((bool)Property(host, "ExternalEventsEnabled"), "external event toggle enables opt-in feedback");
-    externalToggle.Checked = false;
+    SetProperty(externalToggle, "Checked", false);
     Pump(50);
     Require(!(bool)Property(host, "ExternalEventsEnabled"), "external event toggle disables feedback");
     Console.WriteLine("MANAGER EXTERNAL_EVENTS_TOGGLE=PASS");
     Invoke(manager.GetType(), manager, "SelectPage", Enum.Parse(pageType, "Overview"));
-    var feedButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "喂食全部");
+    var feedButton = ButtonControls(manager).SingleOrDefault(button => button.Text == "喂食全部");
     Require(feedButton is not null, "manager exposes feed-all entry");
-    var foodButton = Descendants(manager).OfType<Button>().SingleOrDefault(button => button.Text == "生成虚拟食物");
+    var foodButton = ButtonControls(manager).SingleOrDefault(button => button.Text == "生成虚拟食物");
     Require(foodButton is not null, "manager exposes virtual food entry");
-    foodButton!.PerformClick();
+    ((IButtonControl)foodButton!).PerformClick();
     Pump(50);
     Require((int)Property(host, "VirtualFoodCount") > 0, "virtual food entry creates a target");
     Console.WriteLine("MANAGER VIRTUAL_FOOD_CREATE=PASS");
@@ -332,7 +332,7 @@ try
     var feedPet = First(Property(windowsRegistry, "Windows"));
     var feedInstance = Property(feedPet, "Instance");
     WaitUntil(() => !string.Equals(State(feedInstance), "Fall", StringComparison.Ordinal), 5000, "feed pet reaches a feedable state");
-    feedButton!.PerformClick();
+    ((IButtonControl)feedButton!).PerformClick();
     Pump(50);
     Require(string.Equals(State(feedInstance), "Eat", StringComparison.Ordinal), "feed-all entry starts eating state");
     Console.WriteLine("MANAGER FEED_ALL=PASS");
@@ -340,7 +340,7 @@ try
     Pump(50);
     manager.Close();
     Pump(50);
-    Require(manager.Visible && manager.WindowState == FormWindowState.Minimized, "closing manager minimizes instead of disposing it");
+    Require(!manager.Visible && !manager.IsDisposed, "closing manager hides instead of disposing it");
     Invoke(hostType, host, "ShowManager");
     Require(manager.Visible && manager.WindowState == FormWindowState.Normal, "manager can reopen after close");
     Console.WriteLine("MANAGER CLOSE_REOPEN=PASS");
@@ -419,7 +419,7 @@ try
         hostType.GetProperty("DialogueEnabled")!.SetValue(host, false);
         Pump(50);
     }
-    ClickTrayMenuItem((NotifyIcon)icon, "退出");
+    ClickTrayMenuItem((NotifyIcon)icon, "退出 YimyWalk");
     Pump(50);
     if (host is IDisposable exitedHost) exitedHost.Dispose();
     hostDisposed = true;
@@ -448,6 +448,12 @@ static object Invoke(Type type, object target, string name, params object[] args
 
 static object Property(object target, string name)
     => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(target)!;
+
+static void SetProperty(object target, string name, object value)
+    => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(target, value);
+
+static System.Collections.IList ItemsOf(Control control)
+    => (System.Collections.IList)Property(control, "Items");
 
 static object PrivateField(object target, string name)
     => target.GetType().GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(target)!;
@@ -516,6 +522,9 @@ static IEnumerable<Control> Descendants(Control root)
         foreach (var nested in Descendants(child)) yield return nested;
     }
 }
+
+static IEnumerable<Control> ButtonControls(Control root)
+    => Descendants(root).Where(control => control is IButtonControl);
 
 static void LogDisplays(object host)
 {
