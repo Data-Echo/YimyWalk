@@ -72,6 +72,20 @@ internal static class Program
             Call(host, "CreateMany", "cat", 15);
             Call(host, "CreateMany", "slime", 15);
             Pump(200);
+            var activeInstances = ((IEnumerable)Prop(host, "ActivePets")).Cast<object>().ToArray();
+            Require(activeInstances.Length >= 2, "mixed instances created");
+            var customId = (Guid)Prop(activeInstances[0], "InstanceId");
+            var inheritedId = (Guid)Prop(activeInstances[1], "InstanceId");
+            Require((bool)Call(host, "SetPetScaleOverride", customId, 0.6f)!, "set instance scale override");
+            SetProp(host, "GlobalScale", 1.8f);
+            Require(Math.Abs((float)Prop(activeInstances[0], "ScaleOverride") - 0.6f) < 0.001f,
+                "custom instance keeps its size when global scale changes");
+            Require(Prop(activeInstances[1], "ScaleOverride") is null, "other instance still follows global size");
+            Require(Math.Abs((float)Call(activeInstances[1], "ResolveScale", 1.8f)! - 1.8f) < 0.001f,
+                "inherited instance resolves current global size");
+            Require((bool)Call(host, "ResetPetScaleOverride", customId)!, "reset instance scale override");
+            Require(Prop(activeInstances[0], "ScaleOverride") is null, "reset restores global size inheritance");
+            Console.WriteLine("INSTANCE_SCALE custom=0.6 global=1.8 reset=PASS");
             var list = Descendants(manager).OfType<ListView>().Single(listView => listView.Visible);
             list.Items[0].Selected = true;
             Pump(40);
@@ -112,6 +126,8 @@ internal static class Program
         Pump(30);
     }
     static object Prop(object obj, string name) => obj.GetType().GetProperty(name, Flags)!.GetValue(obj)!;
+    static object? Property(object obj, string name) => obj.GetType().GetProperty(name, Flags)!.GetValue(obj);
+    static void SetProp(object obj, string name, object value) => obj.GetType().GetProperty(name, Flags)!.SetValue(obj, value);
     static object Field(object obj, string name) => obj.GetType().GetField(name, Flags)!.GetValue(obj)!;
     static object? Call(object obj, string name, params object[] args) => obj.GetType().GetMethod(name, Flags)!.Invoke(obj, args);
     static IEnumerable<Control> Descendants(Control root) => root.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(Descendants(c)));
@@ -174,6 +190,14 @@ internal static class Program
             Require(Descendants(page).Any(control => control.GetType().Name == "Switch"), "settings uses AntdUI switch");
             Require(Descendants(page).Any(control => control.GetType().Name == "Select"), "settings uses AntdUI select");
             Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber"), "settings uses AntdUI numeric input");
+        }
+        if (name == "Pets")
+        {
+            Require(FindText(page, "实例大小") is { Visible: true }, "pets exposes per-instance size setting");
+            Require(Descendants(page).Any(control => control.GetType().Name == "Select"), "pets uses AntdUI scale source select");
+            Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber" &&
+                Convert.ToDecimal(Property(control, "Minimum")) == 0.1m &&
+                Convert.ToDecimal(Property(control, "Maximum")) == 8m), "pets uses AntdUI scale input");
         }
         if (name == "Characters")
         {

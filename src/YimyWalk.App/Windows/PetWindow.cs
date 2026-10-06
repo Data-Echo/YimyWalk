@@ -51,8 +51,13 @@ internal sealed class PetWindow : Form
 
     public void SetGlobalScale(float scale)
     {
+        var previousEffective = EffectiveScale;
         _globalScale = Math.Clamp(scale, 0.1f, 8f);
-        RefreshFrame();
+        // A custom instance replaces the global multiplier. Keep the new
+        // global value cached so clearing the override uses it, but do not
+        // resize this window while the override is active.
+        if (Math.Abs(previousEffective - EffectiveScale) > 0.0001f)
+            RefreshFrame();
     }
 
     protected override void Dispose(bool disposing)
@@ -184,5 +189,6 @@ internal sealed class PetWindow : Form
         _dragVelocity = Vector2.Zero;
     }
 
-    private float EffectiveScale => Math.Clamp(Instance.Definition.Scale * _globalScale * _dpiScale, 0.1f, 64f);
+    private float EffectiveScale
+        => Math.Clamp(Instance.Definition.Scale * Instance.ResolveScale(_globalScale) * _dpiScale, 0.1f, 64f);
 }

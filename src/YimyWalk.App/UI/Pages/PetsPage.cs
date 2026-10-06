@@ -27,10 +27,13 @@ internal sealed class PetsPage : ManagerPage
     private readonly Label _walkSource = UiTheme.CreateBodyLabel();
     private readonly Label _dialogueSource = UiTheme.CreateBodyLabel();
     private readonly Label _activitySource = UiTheme.CreateBodyLabel();
+    private readonly Label _scaleSource = UiTheme.CreateBodyLabel();
     private readonly AntdUI.Select _walkOverride = CreateOverrideCombo();
     private readonly AntdUI.Select _dialogueOverride = CreateOverrideCombo();
     private readonly AntdUI.Select _activityMode = UiTheme.CreateSelect(150);
     private readonly AntdUI.InputNumber _activityRate = UiTheme.CreateInputNumber(0.1m, 4m, 0.1m, 1, 100);
+    private readonly AntdUI.Select _scaleMode = UiTheme.CreateSelect(150);
+    private readonly AntdUI.InputNumber _scale = UiTheme.CreateInputNumber(0.1m, 8m, 0.1m, 1, 100);
     private readonly AntdUI.Button _remove = UiTheme.CreateButton("删除选中");
     private readonly AntdUI.Button _feed = UiTheme.CreateButton("喂食");
     private readonly AntdUI.Button _reset = UiTheme.CreateButton("恢复跟随互动默认值");
@@ -47,6 +50,8 @@ internal sealed class PetsPage : ManagerPage
         _list.Columns.Add("状态", 80);
         _activityMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
         _activityMode.SelectedIndex = 0;
+        _scaleMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
+        _scaleMode.SelectedIndex = 0;
         _walkOverride.Items.AddRange(new object[] { "跟随全局", "开启", "关闭" });
         _dialogueOverride.Items.AddRange(new object[] { "跟随全局", "开启", "关闭" });
 
@@ -74,6 +79,8 @@ internal sealed class PetsPage : ManagerPage
         _dialogueOverride.SelectedIndexChanged += (_, _) => ApplyBooleanOverride(isWalk: false);
         _activityMode.SelectedIndexChanged += (_, _) => ApplyActivityOverride();
         _activityRate.ValueChanged += (_, _) => ApplyActivityOverride();
+        _scaleMode.SelectedIndexChanged += (_, _) => ApplyScaleOverride();
+        _scale.ValueChanged += (_, _) => ApplyScaleOverride();
         _remove.Click += (_, _) =>
         {
             if (_editingId is not { } id) return;
@@ -119,6 +126,10 @@ internal sealed class PetsPage : ManagerPage
         activityEditors.Controls.Add(_activityMode);
         activityEditors.Controls.Add(_activityRate);
         AddSettingRow(settings, "活跃度倍率", activityEditors, _activitySource);
+        var scaleEditors = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = Padding.Empty };
+        scaleEditors.Controls.Add(_scaleMode);
+        scaleEditors.Controls.Add(_scale);
+        AddSettingRow(settings, "实例大小", scaleEditors, _scaleSource);
         var actions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
         actions.Controls.Add(_feed);
         actions.Controls.Add(_reset);
@@ -234,10 +245,12 @@ internal sealed class PetsPage : ManagerPage
         _runtime.Text = pet is null ? string.Empty : $"状态：{pet.State} · 饥饿：{pet.Hunger:0.0}\n位置：{pet.Position.X:0}, {pet.Position.Y:0}";
         _preview.ShowIdleFrame(pet?.Definition);
         _remove.Enabled = _feed.Enabled = _reset.Enabled = pet is not null;
-        _walkOverride.Enabled = _dialogueOverride.Enabled = _activityMode.Enabled = _activityRate.Enabled = pet is not null;
+        _walkOverride.Enabled = _dialogueOverride.Enabled = _activityMode.Enabled = pet is not null;
+        _scaleMode.Enabled = pet is not null;
         if (pet is null)
         {
-            _walkSource.Text = _dialogueSource.Text = _activitySource.Text = string.Empty;
+            _walkSource.Text = _dialogueSource.Text = _activitySource.Text = _scaleSource.Text = string.Empty;
+            _activityRate.Enabled = _scale.Enabled = false;
             return;
         }
 
@@ -248,9 +261,12 @@ internal sealed class PetsPage : ManagerPage
             if (changedTarget || !_dialogueOverride.ContainsFocus) _dialogueOverride.SelectedIndex = (int)pet.BehaviorOverrides.DialogueOverride;
             if (changedTarget || !_activityMode.ContainsFocus) _activityMode.SelectedIndex = pet.BehaviorOverrides.ActivityRateOverride is null ? 0 : 1;
             if (changedTarget || !_activityRate.ContainsFocus) _activityRate.Value = (decimal)(pet.BehaviorOverrides.ActivityRateOverride ?? Host.ActivityRate);
+            if (changedTarget || !_scaleMode.ContainsFocus) _scaleMode.SelectedIndex = pet.ScaleOverride is null ? 0 : 1;
+            if (changedTarget || !_scale.ContainsFocus) _scale.Value = (decimal)(pet.ScaleOverride ?? Host.GlobalScale);
         }
         finally { _syncing = false; }
         RefreshSources(pet.BehaviorOverrides);
+        RefreshScaleSource(pet.ScaleOverride);
     }
 
     private void RefreshSources(PetBehaviorOverrides overrides)
@@ -258,6 +274,12 @@ internal sealed class PetsPage : ManagerPage
         _walkSource.Text = InstanceSettingState.WalkSource(overrides, Host.DefaultWalkEnabled, Host.IsPaused);
         _dialogueSource.Text = InstanceSettingState.DialogueSource(overrides, Host.DefaultDialogueEnabled, Host.DialogueEnabled);
         _activityRate.Enabled = _editingId is not null && overrides.ActivityRateOverride is not null;
+    }
+
+    private void RefreshScaleSource(float? scaleOverride)
+    {
+        _scaleSource.Text = InstanceSettingState.ScaleSource(scaleOverride, Host.GlobalScale);
+        _scale.Enabled = _editingId is not null && scaleOverride is not null;
     }
 
     private void ApplyBooleanOverride(bool isWalk)
@@ -281,6 +303,14 @@ internal sealed class PetsPage : ManagerPage
         var overrideValue = _activityMode.SelectedIndex == 0 ? null : (float?)_activityRate.Value;
         Host.SetPetBehaviorOverrides(id, current with { ActivityRateOverride = overrideValue });
         RefreshSources(pet.BehaviorOverrides);
+    }
+
+    private void ApplyScaleOverride()
+    {
+        if (_syncing || _editingId is not { } id || Host.FindPet(id) is not { } pet) return;
+        var overrideValue = _scaleMode.SelectedIndex == 0 ? null : (float?)_scale.Value;
+        Host.SetPetScaleOverride(id, overrideValue);
+        RefreshScaleSource(pet.ScaleOverride);
     }
 
     private static AntdUI.Select CreateOverrideCombo()

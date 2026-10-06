@@ -5,11 +5,11 @@ using System.Numerics;
 namespace YimyWalk.App.UI;
 
 internal sealed record PetListItem(Guid InstanceId, CharacterDefinition Definition, PetState State,
-    float Hunger, Vector2 Position, PetBehaviorOverrides BehaviorOverrides)
+    float Hunger, Vector2 Position, PetBehaviorOverrides BehaviorOverrides, float? ScaleOverride)
 {
     public string RoleName => Definition.DisplayName;
     public static PetListItem Capture(PetInstance pet)
-        => new(pet.InstanceId, pet.Definition, pet.State, pet.Hunger, pet.FootPosition, pet.BehaviorOverrides);
+        => new(pet.InstanceId, pet.Definition, pet.State, pet.Hunger, pet.FootPosition, pet.BehaviorOverrides, pet.ScaleOverride);
 }
 
 /// <summary>

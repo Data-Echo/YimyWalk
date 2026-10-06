@@ -43,6 +43,24 @@ public sealed class PetBehaviorOverrideTests
     }
 
     [Fact]
+    public void InstanceScaleOverrideStaysIndependentFromGlobalScaleUntilReset()
+    {
+        var inherited = new PetInstance(TestSpriteFactory.LoadSpriteOnly("scale-inherited"), new Vector2(100, 720));
+        var custom = new PetInstance(TestSpriteFactory.LoadSpriteOnly("scale-custom"), new Vector2(300, 720))
+        {
+            ScaleOverride = 0.6f
+        };
+
+        Assert.Equal(1.5f, inherited.ResolveScale(1.5f));
+        Assert.Equal(0.6f, custom.ResolveScale(1.5f));
+        Assert.Equal(0.6f, custom.ResolveScale(2.5f));
+
+        custom.ScaleOverride = null;
+
+        Assert.Equal(2.5f, custom.ResolveScale(2.5f));
+    }
+
+    [Fact]
     public void DisabledWalkingDoesNotDisableGravityOrDragging()
     {
         var pet = new PetInstance(TestSpriteFactory.LoadSpriteOnly("override"), new Vector2(100, 720))

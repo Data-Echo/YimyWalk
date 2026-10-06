@@ -37,4 +37,9 @@ internal static class InstanceSettingState
             ? $"跟随全局 · 当前活跃度 {effective:0.0}"
             : $"自定义 · 活跃度 {effective:0.0}";
     }
+
+    public static string ScaleSource(float? scaleOverride, float global)
+        => scaleOverride is null
+            ? $"跟随全局 · 当前大小 {global:0.0}×"
+            : $"自定义 · 当前大小 {scaleOverride.Value:0.0}×";
 }

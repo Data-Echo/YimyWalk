@@ -5,6 +5,11 @@ namespace YimyWalk.Core.Simulation;
 
 public sealed class PetInstance
 {
+    public const float MinScale = 0.1f;
+    public const float MaxScale = 8f;
+
+    private float? _scaleOverride;
+
     public PetInstance(CharacterDefinition definition, Vector2 footPosition, Guid? instanceId = null)
     {
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
@@ -26,6 +31,27 @@ public sealed class PetInstance
     public float Hunger { get; private set; }
     public float Boredom { get; private set; }
     public PetBehaviorOverrides BehaviorOverrides { get; set; } = PetBehaviorOverrides.Inherit;
+
+    /// <summary>
+    /// Runtime-only display multiplier. Null means this instance follows the
+    /// application-wide display scale; it is deliberately not part of settings
+    /// persistence or the immutable character definition.
+    /// </summary>
+    public float? ScaleOverride
+    {
+        get => _scaleOverride;
+        set => _scaleOverride = value is { } custom && float.IsFinite(custom)
+            ? Math.Clamp(custom, MinScale, MaxScale)
+            : null;
+    }
+
+    public float ResolveScale(float globalScale)
+    {
+        var global = float.IsFinite(globalScale)
+            ? Math.Clamp(globalScale, MinScale, MaxScale)
+            : 1f;
+        return ScaleOverride ?? global;
+    }
 
     public void StartWalking(FacingDirection direction)
     {
