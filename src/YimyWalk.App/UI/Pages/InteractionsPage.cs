@@ -10,6 +10,9 @@ internal sealed class InteractionsPage : ManagerPage
     private readonly AntdUI.Switch _hunger = UiTheme.CreateSwitch();
     private readonly AntdUI.Switch _external = UiTheme.CreateSwitch();
     private readonly AntdUI.InputNumber _activity = UiTheme.CreateInputNumber(0.1m, 4m, 0.1m, 1, 110);
+    private readonly AntdUI.InputNumber _jumpDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 110);
+    private readonly AntdUI.InputNumber _climbDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 110);
+    private readonly AntdUI.InputNumber _windowJumpDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 110);
     private readonly Label _activityHelp = UiTheme.CreateMutedLabel("活跃度是自主行为的频率/倾向倍率，不改变移动速度、重力或动画帧率。");
     private readonly Label _status = UiTheme.CreateMutedLabel();
     private bool _syncing;
@@ -20,7 +23,7 @@ internal sealed class InteractionsPage : ManagerPage
         AddHeading(layout, "互动", "全局默认供跟随实例继承；运行级限制优先于单只设置。");
         var card = UiTheme.CreateCard();
         card.Dock = DockStyle.Top;
-        card.Height = 410;
+        card.Height = 640;
         var cardTitle = new Label { Text = "全局默认", AutoSize = true, Font = UiTheme.SectionFont, Dock = DockStyle.Top };
         var checks = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
         checks.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78));
@@ -34,6 +37,9 @@ internal sealed class InteractionsPage : ManagerPage
         activityRow.Controls.Add(_activity);
         checks.Controls.Add(activityRow, 0, checks.RowCount++);
         checks.Controls.Add(_activityHelp, 0, checks.RowCount++);
+        AddNumericSettingRow(checks, "跳跃欲望 (%)", "每次尝试的概率；活跃度只缩短等待时间；0 只停止新的跳跃。", _jumpDesire);
+        AddNumericSettingRow(checks, "攀爬欲望 (%)", "每次尝试的概率；活跃度只缩短等待时间；0 只停止新的攀爬。", _climbDesire);
+        AddNumericSettingRow(checks, "窗口跳跃欲望 (%)", "有可达的可见窗口时，用于决定是否尝试跳到窗口顶部；0% 禁止，100% 每次优先尝试。", _windowJumpDesire);
         card.Controls.Add(checks);
         card.Controls.Add(cardTitle);
 
@@ -65,6 +71,9 @@ internal sealed class InteractionsPage : ManagerPage
         _hunger.CheckedChanged += (_, _) => { if (!_syncing) Host.HungerEnabled = _hunger.Checked; };
         _external.CheckedChanged += (_, _) => { if (!_syncing) Host.ExternalEventsEnabled = _external.Checked; };
         _activity.ValueChanged += (_, _) => { if (!_syncing) Host.ActivityRate = (float)_activity.Value; };
+        _jumpDesire.ValueChanged += (_, _) => { if (!_syncing) Host.JumpDesire = Math.Clamp((float)_jumpDesire.Value / 100f, 0f, 1f); };
+        _climbDesire.ValueChanged += (_, _) => { if (!_syncing) Host.ClimbDesire = Math.Clamp((float)_climbDesire.Value / 100f, 0f, 1f); };
+        _windowJumpDesire.ValueChanged += (_, _) => { if (!_syncing) Host.WindowJumpDesire = Math.Clamp((float)_windowJumpDesire.Value / 100f, 0f, 1f); };
     }
 
     public override string PageTitle => "互动";
@@ -80,6 +89,9 @@ internal sealed class InteractionsPage : ManagerPage
             _hunger.Checked = Host.HungerEnabled;
             _external.Checked = Host.ExternalEventsEnabled;
             _activity.Value = (decimal)Host.ActivityRate;
+            _jumpDesire.Value = (decimal)(Host.JumpDesire * 100f);
+            _climbDesire.Value = (decimal)(Host.ClimbDesire * 100f);
+            _windowJumpDesire.Value = (decimal)(Host.WindowJumpDesire * 100f);
             _status.Text = $"全局设置保存状态：{Host.SettingsSaveState}";
         }
         finally { _syncing = false; }
@@ -95,6 +107,22 @@ internal sealed class InteractionsPage : ManagerPage
         text.Controls.Add(UiTheme.CreateMutedLabel(description), 0, 1);
         table.Controls.Add(text, 0, row);
         table.Controls.Add(UiTheme.WrapSwitch(editor), 1, row);
+        table.ColumnStyles.Clear();
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));
+        table.ColumnCount = 2;
+    }
+
+    private static void AddNumericSettingRow(TableLayoutPanel table, string title, string description, Control editor)
+    {
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var text = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 1, Margin = new Padding(0, 4, 0, 4) };
+        text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        text.Controls.Add(new Label { Text = title, AutoSize = true, Font = UiTheme.SectionFont, ForeColor = UiTheme.Ink }, 0, 0);
+        text.Controls.Add(UiTheme.CreateMutedLabel(description), 0, 1);
+        table.Controls.Add(text, 0, row);
+        table.Controls.Add(editor, 1, row);
         table.ColumnStyles.Clear();
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 78));
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22));

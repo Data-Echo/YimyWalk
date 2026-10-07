@@ -27,6 +27,11 @@ public interface IWorldSurface
     WorldRect WorkingArea { get; }
     bool IsValid { get; }
     IDisplayProvider? DisplayProvider => null;
+    bool WindowLandingEnabled => false;
+    IReadOnlyList<WindowSurfaceCandidate> JumpCandidates => Array.Empty<WindowSurfaceCandidate>();
+
+    float DisplayScaleForPoint(Vector2 point)
+        => DisplayForPoint(point)?.Scale is { } scale && float.IsFinite(scale) && scale > 0 ? scale : 1f;
 
     DisplayInfo? DisplayForPoint(Vector2 point)
         => DisplayProvider?.Resolve(point);
@@ -78,11 +83,14 @@ public enum PetState
 {
     Idle,
     Walk,
+    JumpCharge,
     Jump,
     Apex,
     Fall,
     Dragged,
-    Eat
+    Eat,
+    Climb,
+    TopWalk
 }
 
 public enum FacingDirection

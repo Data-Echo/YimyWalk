@@ -28,12 +28,21 @@ internal sealed class PetsPage : ManagerPage
     private readonly Label _dialogueSource = UiTheme.CreateBodyLabel();
     private readonly Label _activitySource = UiTheme.CreateBodyLabel();
     private readonly Label _scaleSource = UiTheme.CreateBodyLabel();
+    private readonly Label _jumpDesireSource = UiTheme.CreateBodyLabel();
+    private readonly Label _climbDesireSource = UiTheme.CreateBodyLabel();
+    private readonly Label _windowJumpDesireSource = UiTheme.CreateBodyLabel();
     private readonly AntdUI.Select _walkOverride = CreateOverrideCombo();
     private readonly AntdUI.Select _dialogueOverride = CreateOverrideCombo();
     private readonly AntdUI.Select _activityMode = UiTheme.CreateSelect(120);
     private readonly AntdUI.InputNumber _activityRate = UiTheme.CreateInputNumber(0.1m, 4m, 0.1m, 1, 90);
     private readonly AntdUI.Select _scaleMode = UiTheme.CreateSelect(120);
     private readonly AntdUI.InputNumber _scale = UiTheme.CreateInputNumber(0.1m, 8m, 0.1m, 1, 90);
+    private readonly AntdUI.Select _jumpDesireMode = UiTheme.CreateSelect(120);
+    private readonly AntdUI.InputNumber _jumpDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 90);
+    private readonly AntdUI.Select _climbDesireMode = UiTheme.CreateSelect(120);
+    private readonly AntdUI.InputNumber _climbDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 90);
+    private readonly AntdUI.Select _windowJumpDesireMode = UiTheme.CreateSelect(120);
+    private readonly AntdUI.InputNumber _windowJumpDesire = UiTheme.CreateInputNumber(0m, 100m, 1m, 0, 90);
     private readonly AntdUI.Button _remove = UiTheme.CreateButton("删除选中");
     private readonly AntdUI.Button _feed = UiTheme.CreateButton("喂食");
     private readonly AntdUI.Button _reset = UiTheme.CreateButton("恢复跟随互动默认值");
@@ -52,6 +61,12 @@ internal sealed class PetsPage : ManagerPage
         _activityMode.SelectedIndex = 0;
         _scaleMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
         _scaleMode.SelectedIndex = 0;
+        _jumpDesireMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
+        _jumpDesireMode.SelectedIndex = 0;
+        _climbDesireMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
+        _climbDesireMode.SelectedIndex = 0;
+        _windowJumpDesireMode.Items.AddRange(new object[] { "跟随全局", "自定义" });
+        _windowJumpDesireMode.SelectedIndex = 0;
         _walkOverride.Items.AddRange(new object[] { "跟随全局", "开启", "关闭" });
         _dialogueOverride.Items.AddRange(new object[] { "跟随全局", "开启", "关闭" });
 
@@ -87,6 +102,12 @@ internal sealed class PetsPage : ManagerPage
         _activityRate.ValueChanged += (_, _) => ApplyActivityOverride();
         _scaleMode.SelectedIndexChanged += (_, _) => ApplyScaleOverride();
         _scale.ValueChanged += (_, _) => ApplyScaleOverride();
+        _jumpDesireMode.SelectedIndexChanged += (_, _) => ApplyDesireOverride(isJump: true);
+        _jumpDesire.ValueChanged += (_, _) => ApplyDesireOverride(isJump: true);
+        _climbDesireMode.SelectedIndexChanged += (_, _) => ApplyDesireOverride(isJump: false);
+        _climbDesire.ValueChanged += (_, _) => ApplyDesireOverride(isJump: false);
+        _windowJumpDesireMode.SelectedIndexChanged += (_, _) => ApplyWindowJumpDesireOverride();
+        _windowJumpDesire.ValueChanged += (_, _) => ApplyWindowJumpDesireOverride();
         _remove.Click += (_, _) =>
         {
             if (_editingId is not { } id) return;
@@ -139,6 +160,18 @@ internal sealed class PetsPage : ManagerPage
         scaleEditors.Controls.Add(_scaleMode);
         scaleEditors.Controls.Add(_scale);
         AddSettingRow(settings, "实例大小", scaleEditors, _scaleSource);
+        var jumpDesireEditors = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = Padding.Empty };
+        jumpDesireEditors.Controls.Add(_jumpDesireMode);
+        jumpDesireEditors.Controls.Add(_jumpDesire);
+        AddSettingRow(settings, "跳跃欲望 (%)", jumpDesireEditors, _jumpDesireSource);
+        var climbDesireEditors = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = Padding.Empty };
+        climbDesireEditors.Controls.Add(_climbDesireMode);
+        climbDesireEditors.Controls.Add(_climbDesire);
+        AddSettingRow(settings, "攀爬欲望 (%)", climbDesireEditors, _climbDesireSource);
+        var windowJumpDesireEditors = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = Padding.Empty };
+        windowJumpDesireEditors.Controls.Add(_windowJumpDesireMode);
+        windowJumpDesireEditors.Controls.Add(_windowJumpDesire);
+        AddSettingRow(settings, "窗口跳跃欲望 (%)", windowJumpDesireEditors, _windowJumpDesireSource);
         var actions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, UiTheme.Space12, 0, 0) };
         actions.Controls.Add(_feed);
         actions.Controls.Add(_reset);
@@ -255,11 +288,12 @@ internal sealed class PetsPage : ManagerPage
         _preview.ShowIdleFrame(pet?.Definition);
         _remove.Enabled = _feed.Enabled = _reset.Enabled = pet is not null;
         _walkOverride.Enabled = _dialogueOverride.Enabled = _activityMode.Enabled = pet is not null;
-        _scaleMode.Enabled = pet is not null;
+        _scaleMode.Enabled = _jumpDesireMode.Enabled = _climbDesireMode.Enabled = _windowJumpDesireMode.Enabled = pet is not null;
         if (pet is null)
         {
             _walkSource.Text = _dialogueSource.Text = _activitySource.Text = _scaleSource.Text = string.Empty;
-            _activityRate.Enabled = _scale.Enabled = false;
+            _jumpDesireSource.Text = _climbDesireSource.Text = _windowJumpDesireSource.Text = string.Empty;
+            _activityRate.Enabled = _scale.Enabled = _jumpDesire.Enabled = _climbDesire.Enabled = _windowJumpDesire.Enabled = false;
             return;
         }
 
@@ -272,6 +306,12 @@ internal sealed class PetsPage : ManagerPage
             if (changedTarget || !_activityRate.ContainsFocus) _activityRate.Value = (decimal)(pet.BehaviorOverrides.ActivityRateOverride ?? Host.ActivityRate);
             if (changedTarget || !_scaleMode.ContainsFocus) _scaleMode.SelectedIndex = pet.ScaleOverride is null ? 0 : 1;
             if (changedTarget || !_scale.ContainsFocus) _scale.Value = (decimal)(pet.ScaleOverride ?? Host.GlobalScale);
+            if (changedTarget || !_jumpDesireMode.ContainsFocus) _jumpDesireMode.SelectedIndex = pet.BehaviorOverrides.JumpDesireOverride is null ? 0 : 1;
+            if (changedTarget || !_jumpDesire.ContainsFocus) _jumpDesire.Value = (decimal)((pet.BehaviorOverrides.JumpDesireOverride ?? Host.JumpDesire) * 100f);
+            if (changedTarget || !_climbDesireMode.ContainsFocus) _climbDesireMode.SelectedIndex = pet.BehaviorOverrides.ClimbDesireOverride is null ? 0 : 1;
+            if (changedTarget || !_climbDesire.ContainsFocus) _climbDesire.Value = (decimal)((pet.BehaviorOverrides.ClimbDesireOverride ?? Host.ClimbDesire) * 100f);
+            if (changedTarget || !_windowJumpDesireMode.ContainsFocus) _windowJumpDesireMode.SelectedIndex = pet.BehaviorOverrides.WindowJumpDesireOverride is null ? 0 : 1;
+            if (changedTarget || !_windowJumpDesire.ContainsFocus) _windowJumpDesire.Value = (decimal)((pet.BehaviorOverrides.WindowJumpDesireOverride ?? Host.WindowJumpDesire) * 100f);
         }
         finally { _syncing = false; }
         RefreshSources(pet.BehaviorOverrides);
@@ -282,7 +322,13 @@ internal sealed class PetsPage : ManagerPage
     {
         _walkSource.Text = InstanceSettingState.WalkSource(overrides, Host.DefaultWalkEnabled, Host.IsPaused);
         _dialogueSource.Text = InstanceSettingState.DialogueSource(overrides, Host.DefaultDialogueEnabled, Host.DialogueEnabled);
+        _jumpDesireSource.Text = InstanceSettingState.JumpDesireSource(overrides, Host.JumpDesire);
+        _climbDesireSource.Text = InstanceSettingState.ClimbDesireSource(overrides, Host.ClimbDesire);
+        _windowJumpDesireSource.Text = InstanceSettingState.WindowJumpDesireSource(overrides, Host.WindowJumpDesire);
         _activityRate.Enabled = _editingId is not null && overrides.ActivityRateOverride is not null;
+        _jumpDesire.Enabled = _editingId is not null && overrides.JumpDesireOverride is not null;
+        _climbDesire.Enabled = _editingId is not null && overrides.ClimbDesireOverride is not null;
+        _windowJumpDesire.Enabled = _editingId is not null && overrides.WindowJumpDesireOverride is not null;
     }
 
     private void RefreshScaleSource(float? scaleOverride)
@@ -320,6 +366,31 @@ internal sealed class PetsPage : ManagerPage
         var overrideValue = _scaleMode.SelectedIndex == 0 ? null : (float?)_scale.Value;
         Host.SetPetScaleOverride(id, overrideValue);
         RefreshScaleSource(pet.ScaleOverride);
+    }
+
+    private void ApplyDesireOverride(bool isJump)
+    {
+        if (_syncing || _editingId is not { } id || Host.FindPet(id) is not { } pet) return;
+        var current = pet.BehaviorOverrides;
+        var mode = isJump ? _jumpDesireMode : _climbDesireMode;
+        var editor = isJump ? _jumpDesire : _climbDesire;
+        var overrideValue = mode.SelectedIndex == 0
+            ? null
+            : (float?)Math.Clamp((float)editor.Value / 100f, 0f, 1f);
+        Host.SetPetBehaviorOverrides(id, isJump
+            ? current with { JumpDesireOverride = overrideValue }
+            : current with { ClimbDesireOverride = overrideValue });
+        RefreshSources(pet.BehaviorOverrides);
+    }
+
+    private void ApplyWindowJumpDesireOverride()
+    {
+        if (_syncing || _editingId is not { } id || Host.FindPet(id) is not { } pet) return;
+        var overrideValue = _windowJumpDesireMode.SelectedIndex == 0
+            ? null
+            : (float?)Math.Clamp((float)_windowJumpDesire.Value / 100f, 0f, 1f);
+        Host.SetPetBehaviorOverrides(id, pet.BehaviorOverrides with { WindowJumpDesireOverride = overrideValue });
+        RefreshSources(pet.BehaviorOverrides);
     }
 
     private static AntdUI.Select CreateOverrideCombo()

@@ -32,6 +32,23 @@ public sealed class PetInstance
     public float Boredom { get; private set; }
     public PetBehaviorOverrides BehaviorOverrides { get; set; } = PetBehaviorOverrides.Inherit;
 
+    internal bool AutonomousTimersInitialized { get; set; }
+    internal float JumpAttemptDelay { get; set; }
+    internal float JumpChargeElapsed { get; set; }
+    internal float JumpChargeDuration { get; set; }
+    internal float JumpChargeLaunchSpeed { get; set; }
+    internal float ClimbAttemptDelay { get; set; }
+    internal bool ClimbEdgeArmed { get; set; } = true;
+    internal string? AttachedDisplayId { get; set; }
+    internal WorldRect AttachedDisplayArea { get; set; }
+    internal float AttachedDisplayScale { get; set; } = 1f;
+    internal float AttachedEffectiveScale { get; set; } = 1f;
+    internal string? LastClimbAttemptDisplayId { get; set; }
+    internal FacingDirection ClimbSide { get; set; }
+    internal float ClimbTopY { get; set; }
+    internal float ClimbEdgeX { get; set; }
+    internal float TopDropDelay { get; set; }
+
     /// <summary>
     /// Runtime-only display multiplier. Null means this instance follows the
     /// application-wide display scale; it is deliberately not part of settings
@@ -63,14 +80,32 @@ public sealed class PetInstance
 
     public void StartJump()
     {
+        ClearJumpCharge();
         State = PetState.Jump;
         StateTime = 0;
         Velocity = new Vector2(Velocity.X, -Definition.Movement.JumpSpeed);
     }
 
+    internal void StartJumpCharge(float duration, float launchSpeed)
+    {
+        JumpChargeElapsed = 0;
+        JumpChargeDuration = float.IsFinite(duration) ? Math.Max(0, duration) : 0;
+        JumpChargeLaunchSpeed = float.IsFinite(launchSpeed) ? Math.Max(0, launchSpeed) : Definition.Movement.JumpSpeed;
+        State = PetState.JumpCharge;
+        StateTime = 0;
+        Velocity = new Vector2(Velocity.X, 0);
+    }
+
+    internal void ClearJumpCharge()
+    {
+        JumpChargeElapsed = 0;
+        JumpChargeDuration = 0;
+        JumpChargeLaunchSpeed = 0;
+    }
+
     public bool Feed(float amount = 0.35f)
     {
-        if (State is PetState.Dragged or PetState.Jump or PetState.Apex or PetState.Fall or PetState.Eat)
+        if (State is not (PetState.Idle or PetState.Walk))
             return false;
         if (!float.IsFinite(amount) || amount <= 0) return false;
         Hunger = Math.Clamp(Hunger - amount, 0f, 1f);
@@ -96,9 +131,13 @@ public sealed class PetInstance
         {
             PetState.Walk when Facing == FacingDirection.Left => FrameKind.WalkLeft,
             PetState.Walk => FrameKind.WalkRight,
+            PetState.JumpCharge => FrameKind.Apex,
             PetState.Jump => FrameKind.Jump,
             PetState.Apex => FrameKind.Apex,
             PetState.Fall => FrameKind.Fall,
+            PetState.Climb => FrameKind.Apex,
+            PetState.TopWalk when Facing == FacingDirection.Left => FrameKind.WalkLeft,
+            PetState.TopWalk => FrameKind.WalkRight,
             _ => FrameKind.Idle
         };
 }

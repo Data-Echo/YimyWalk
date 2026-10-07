@@ -21,8 +21,14 @@ Pump(100);
 var app = Assembly.Load("YimyWalk.App");
 var hostType = app.GetType("YimyWalk.App.Host.AppHost", throwOnError: true)!;
 var host = Activator.CreateInstance(hostType, nonPublic: true)!;
+var characterTemp = Path.Combine(Path.GetTempPath(), "YimyWalkDesktopInputSmoke-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(characterTemp);
+CopyCharacterFixture("slime", characterTemp);
+CopyCharacterFixture("cat", characterTemp);
+SetProperty(host, "CharacterRootOverride", characterTemp);
 var hostDisposed = false;
 var originalDialogueEnabled = true;
+var originalDefaultDialogueEnabled = true;
 
 try
 {
@@ -75,9 +81,15 @@ try
     Require(Property(host, "SettingsSaveState") is not null, "global save status exists");
     Console.WriteLine("SETTINGS CONTRACT=PASS");
     originalDialogueEnabled = (bool)Property(host, "DialogueEnabled");
+    originalDefaultDialogueEnabled = (bool)Property(host, "DefaultDialogueEnabled");
     if (!originalDialogueEnabled)
     {
         hostType.GetProperty("DialogueEnabled")!.SetValue(host, true);
+        Pump(50);
+    }
+    if (!originalDefaultDialogueEnabled)
+    {
+        hostType.GetProperty("DefaultDialogueEnabled")!.SetValue(host, true);
         Pump(50);
     }
     LogDisplays(host);
@@ -419,6 +431,11 @@ try
         hostType.GetProperty("DialogueEnabled")!.SetValue(host, false);
         Pump(50);
     }
+    if (!originalDefaultDialogueEnabled)
+    {
+        hostType.GetProperty("DefaultDialogueEnabled")!.SetValue(host, false);
+        Pump(50);
+    }
     ClickTrayMenuItem((NotifyIcon)icon, "退出 YimyWalk");
     Pump(50);
     if (host is IDisposable exitedHost) exitedHost.Dispose();
@@ -433,11 +450,14 @@ finally
     {
         if (!originalDialogueEnabled)
             hostType.GetProperty("DialogueEnabled")?.SetValue(host, false);
+        if (!originalDefaultDialogueEnabled)
+            hostType.GetProperty("DefaultDialogueEnabled")?.SetValue(host, false);
         if (host is IDisposable disposable) disposable.Dispose();
         hostDisposed = true;
     }
     Pump(100);
     Cursor.Position = savedCursor;
+    if (Directory.Exists(characterTemp)) Directory.Delete(characterTemp, true);
 }
 
 Console.WriteLine("RESULT PASS");
@@ -451,6 +471,18 @@ static object Property(object target, string name)
 
 static void SetProperty(object target, string name, object value)
     => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(target, value);
+
+static void CopyCharacterFixture(string role, string destinationRoot)
+{
+    var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../"));
+    var source = role.Equals("cat", StringComparison.OrdinalIgnoreCase)
+        ? Path.Combine(repoRoot, "tests", "Fixtures", "Characters", role)
+        : Path.Combine(repoRoot, "Characters", role);
+    var destination = Path.Combine(destinationRoot, role);
+    Directory.CreateDirectory(destination);
+    foreach (var file in Directory.EnumerateFiles(source))
+        File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+}
 
 static System.Collections.IList ItemsOf(Control control)
     => (System.Collections.IList)Property(control, "Items");

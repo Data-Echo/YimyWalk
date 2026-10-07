@@ -23,6 +23,10 @@ public sealed class PetSession : IDisposable
     public float NeedRate { get => _engine.NeedRate; set => _engine.NeedRate = Math.Clamp(value, 0f, 4f); }
     public bool DefaultWalkEnabled { get => _engine.DefaultWalkEnabled; set => _engine.DefaultWalkEnabled = value; }
     public float ActivityRate { get => _engine.ActivityRate; set => _engine.ActivityRate = Math.Clamp(value, 0.1f, 4f); }
+    public float JumpDesire { get => _engine.JumpDesire; set => _engine.JumpDesire = ClampDesire(value); }
+    public float ClimbDesire { get => _engine.ClimbDesire; set => _engine.ClimbDesire = ClampDesire(value); }
+    public float WindowJumpDesire { get => _engine.WindowJumpDesire; set => _engine.WindowJumpDesire = ClampDesire(value); }
+    public float GlobalScale { get => _engine.GlobalScale; set => _engine.GlobalScale = ClampScale(value); }
     public int ActiveCount => _instances.Count;
     public IWorldSurface Surface => _engine.Surface;
     public IReadOnlyCollection<PetInstance> Instances => _instances.Values.Select(value => value.Pet).ToArray();
@@ -146,4 +150,10 @@ public sealed class PetSession : IDisposable
         var x = area.Left + Math.Min(area.Width, 80 + (offset % 10) * 50);
         return new Vector2(x, area.Top - 32);
     }
+
+    private static float ClampDesire(float value)
+        => float.IsFinite(value) ? Math.Clamp(value, 0f, 1f) : 0f;
+
+    private static float ClampScale(float value)
+        => float.IsFinite(value) ? Math.Clamp(value, PetInstance.MinScale, PetInstance.MaxScale) : 1f;
 }

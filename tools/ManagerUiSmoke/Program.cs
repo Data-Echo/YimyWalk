@@ -14,8 +14,18 @@ internal static class Program
         global::ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         var app = Assembly.Load("YimyWalk.App");
+        if (args.Contains("--preview-pixels"))
+        {
+            RunPreviewPixelRegression(app);
+            return 0;
+        }
         host = Activator.CreateInstance(app.GetType("YimyWalk.App.Host.AppHost")!, true)!;
         var temp = Path.Combine(Path.GetTempPath(), "YimyWalk-manager-smoke-" + Guid.NewGuid().ToString("N"));
+        var characterTemp = Path.Combine(Path.GetTempPath(), "YimyWalk-manager-characters-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(characterTemp);
+        CopyCharacterFixture("slime", characterTemp);
+        CopyCharacterFixture("cat", characterTemp);
+        SetProp(host, "CharacterRootOverride", characterTemp);
         // Isolate all saves from the user's settings, including failure cases.
         var store = Activator.CreateInstance(app.GetType("YimyWalk.App.Settings.SettingsStore")!, new object[] { temp });
         host.GetType().GetField("_settingsStore", Flags)!.SetValue(host, store);
@@ -69,8 +79,11 @@ internal static class Program
             Pump(120);
             Require((int)Prop(host, "ActivePetCount") == 0 && (int)Prop(host, "PendingCreationCount") == 0, "clear cancels queued creation");
             Console.WriteLine("CLEAR pending_queue=PASS");
-            Call(host, "CreateMany", "cat", 15);
-            Call(host, "CreateMany", "slime", 15);
+            // Keep the mixed-role regression small enough that the global 1.8x
+            // preview scale does not create dozens of multi-hundred-pixel
+            // layered windows during this UI-only smoke.
+            Call(host, "CreateMany", "cat", 2);
+            Call(host, "CreateMany", "slime", 2);
             Pump(200);
             var activeInstances = ((IEnumerable)Prop(host, "ActivePets")).Cast<object>().ToArray();
             Require(activeInstances.Length >= 2, "mixed instances created");
@@ -106,6 +119,36 @@ internal static class Program
             Require(Prop(Call(host, "FindPet", selectedId)!, "ScaleOverride") is null,
                 "pets page reset returns instance size to global inheritance");
             Console.WriteLine("INSTANCE_SCALE_UI selected=0.7 reset=PASS");
+            Page("Interactions");
+            var interactions = VisiblePage();
+            SetProp(Field(interactions, "_jumpDesire"), "Value", 35m);
+            SetProp(Field(interactions, "_climbDesire"), "Value", 65m);
+            SetProp(Field(interactions, "_windowJumpDesire"), "Value", 55m);
+            Require(Math.Abs((float)Prop(host, "JumpDesire") - 0.35f) < 0.001f, "global jump desire maps UI percent to 0-1");
+            Require(Math.Abs((float)Prop(host, "ClimbDesire") - 0.65f) < 0.001f, "global climb desire maps UI percent to 0-1");
+            Require(Math.Abs((float)Prop(host, "WindowJumpDesire") - 0.55f) < 0.001f, "global window jump desire maps UI percent to 0-1");
+            Console.WriteLine("GLOBAL_DESIRE_UI jump=35% climb=65% window=55% mapping=PASS");
+            Page("Pets");
+            list = Descendants(manager).OfType<ListView>().Single(listView => listView.Visible);
+            if (list.Items.Count > 0) list.Items[0].Selected = true;
+            Pump(30);
+            var pets = VisiblePage();
+            SetProp(Field(pets, "_jumpDesireMode"), "SelectedIndex", 1);
+            SetProp(Field(pets, "_jumpDesire"), "Value", 70m);
+            SetProp(Field(pets, "_climbDesireMode"), "SelectedIndex", 1);
+            SetProp(Field(pets, "_climbDesire"), "Value", 80m);
+            SetProp(Field(pets, "_windowJumpDesireMode"), "SelectedIndex", 1);
+            SetProp(Field(pets, "_windowJumpDesire"), "Value", 90m);
+            var behavior = Prop(Call(host, "FindPet", selectedId)!, "BehaviorOverrides");
+            Require(Math.Abs((float)Prop(behavior, "JumpDesireOverride")! - 0.7f) < 0.001f, "pets page stores jump desire override");
+            Require(Math.Abs((float)Prop(behavior, "ClimbDesireOverride")! - 0.8f) < 0.001f, "pets page stores climb desire override");
+            Require(Math.Abs((float)Prop(behavior, "WindowJumpDesireOverride")! - 0.9f) < 0.001f, "pets page stores window jump desire override");
+            Require((bool)Call(host, "ResetPetBehaviorOverrides", selectedId)!, "reset clears desire overrides");
+            behavior = Prop(Call(host, "FindPet", selectedId)!, "BehaviorOverrides");
+            Require(Prop(behavior, "JumpDesireOverride") is null && Prop(behavior, "ClimbDesireOverride") is null
+                && Prop(behavior, "WindowJumpDesireOverride") is null,
+                "reset returns desire overrides to global inheritance");
+            Console.WriteLine("INSTANCE_DESIRE_UI jump=70% climb=80% window=90% reset=PASS");
             var runtime = Descendants(manager).OfType<Label>().First(label => label.Visible && label.Text.StartsWith("状态：", StringComparison.Ordinal));
             var runtimeBefore = runtime.Text;
             Pump(500);
@@ -134,7 +177,106 @@ internal static class Program
         {
             ((IDisposable)host).Dispose();
             if (Directory.Exists(temp)) Directory.Delete(temp, true);
+            if (Directory.Exists(characterTemp)) Directory.Delete(characterTemp, true);
         }
+    }
+
+    static void RunPreviewPixelRegression(Assembly app)
+    {
+        var cacheType = app.GetType("YimyWalk.App.Rendering.FrameSurfaceCache")!;
+        var previewType = app.GetType("YimyWalk.App.UI.Controls.CharacterFramePreview")!;
+        using var cache = (IDisposable)Activator.CreateInstance(cacheType, true)!;
+        foreach (var source in new[]
+        {
+            new Size(16, 16), new Size(192, 192),
+            new Size(64, 32), new Size(192, 96),
+            new Size(32, 64), new Size(96, 192)
+        })
+        foreach (var dpiSize in new[] { 96, 120, 144, 192 })
+        {
+            using var definition = CreatePreviewDefinition(source);
+            using var preview = (Control)Activator.CreateInstance(previewType, new[] { cache })!;
+            preview.Size = new Size(dpiSize, dpiSize);
+            preview.CreateControl();
+            previewType.GetMethod("ShowIdleFrame", Flags)!.Invoke(preview, new object?[] { definition, 2f });
+            using var rendered = new Bitmap(preview.ClientSize.Width, preview.ClientSize.Height);
+            preview.DrawToBitmap(rendered, preview.ClientRectangle);
+            foreach (var marker in new[] { Color.Red, Color.Lime, Color.Blue, Color.Magenta })
+                Require(ContainsMarker(rendered, marker), $"preview preserves {source.Width}x{source.Height} {dpiSize}px marker {marker.Name}");
+            var nonBackground = FindMarkerBounds(rendered);
+            Require(nonBackground.Width > 0 && nonBackground.Height > 0, $"preview draws {source.Width}x{source.Height} at {dpiSize}px");
+            Require(nonBackground.Left > 0 && nonBackground.Top > 0
+                && nonBackground.Right < rendered.Width - 1 && nonBackground.Bottom < rendered.Height - 1,
+                $"preview leaves visible margins for {source.Width}x{source.Height} at {dpiSize}px bounds={nonBackground}");
+            var sourceRatio = source.Width / (double)source.Height;
+            var renderedRatio = nonBackground.Width / (double)nonBackground.Height;
+            Require(Math.Abs(sourceRatio - renderedRatio) < 0.08, $"preview preserves aspect ratio {source.Width}x{source.Height} at {dpiSize}px");
+        }
+        Console.WriteLine("PREVIEW_PIXELS square/wide/tall 96/120/144/192 DPI UI-render PASS (OS DPI matrix not exercised)");
+    }
+
+    static YimyWalk.Core.Characters.CharacterDefinition CreatePreviewDefinition(Size size)
+    {
+        var frames = Enumerable.Range(0, 9)
+            .Select(index => new YimyWalk.Core.Characters.CharacterFrame(index, size.Width, size.Height,
+                BuildPreviewPixels(size), index < 3 ? YimyWalk.Core.Characters.FrameKind.Idle : YimyWalk.Core.Characters.FrameKind.WalkRight))
+            .ToArray();
+        return new YimyWalk.Core.Characters.CharacterDefinition
+        {
+            Id = "preview",
+            DisplayName = "Preview",
+            CellWidth = size.Width,
+            CellHeight = size.Height,
+            Scale = 1,
+            Anchor = new YimyWalk.Core.Characters.Anchor(0.5f, 0.9f),
+            Frames = frames,
+            Movement = new YimyWalk.Core.Characters.CharacterMovement(1, 1, 1, 1),
+            Defaults = new YimyWalk.Core.Characters.CharacterDefaults(1, 2, 1),
+            Dialogue = YimyWalk.Core.Characters.DialogueSet.Default,
+        };
+    }
+
+    static ReadOnlyMemory<byte> BuildPreviewPixels(Size size)
+    {
+        var pixels = new byte[size.Width * size.Height * 4];
+        for (var y = 0; y < size.Height; y++)
+        for (var x = 0; x < size.Width; x++)
+        {
+            var color = x < size.Width / 2
+                ? (y < size.Height / 2 ? Color.Red : Color.Blue)
+                : (y < size.Height / 2 ? Color.Lime : Color.Magenta);
+            var offset = (y * size.Width + x) * 4;
+            pixels[offset] = color.R; pixels[offset + 1] = color.G; pixels[offset + 2] = color.B; pixels[offset + 3] = 255;
+        }
+        return pixels;
+    }
+
+    static bool ContainsMarker(Bitmap bitmap, Color expected)
+    {
+        for (var y = 0; y < bitmap.Height; y++)
+        for (var x = 0; x < bitmap.Width; x++)
+        {
+            var actual = bitmap.GetPixel(x, y);
+            if (actual.A > 200 && Math.Abs(actual.R - expected.R) < 8 && Math.Abs(actual.G - expected.G) < 8 && Math.Abs(actual.B - expected.B) < 8)
+                return true;
+        }
+        return false;
+    }
+
+    static Rectangle FindMarkerBounds(Bitmap bitmap)
+    {
+        var bounds = Rectangle.Empty;
+        for (var y = 0; y < bitmap.Height; y++)
+        for (var x = 0; x < bitmap.Width; x++)
+        {
+            var pixel = bitmap.GetPixel(x, y);
+            var marker = (pixel.R > 220 && pixel.G < 40 && pixel.B < 40) ||
+                         (pixel.R < 40 && pixel.G > 220 && pixel.B < 40) ||
+                         (pixel.R < 40 && pixel.G < 40 && pixel.B > 220) ||
+                         (pixel.R > 180 && pixel.B > 180 && pixel.G < 80);
+            if (marker) bounds = bounds.IsEmpty ? new Rectangle(x, y, 1, 1) : Rectangle.Union(bounds, new Rectangle(x, y, 1, 1));
+        }
+        return bounds;
     }
     static void Page(string name)
     {
@@ -147,6 +289,17 @@ internal static class Program
     static void SetProp(object obj, string name, object value) => obj.GetType().GetProperty(name, Flags)!.SetValue(obj, value);
     static object Field(object obj, string name) => obj.GetType().GetField(name, Flags)!.GetValue(obj)!;
     static object? Call(object obj, string name, params object[] args) => obj.GetType().GetMethod(name, Flags)!.Invoke(obj, args);
+    static void CopyCharacterFixture(string role, string destinationRoot)
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../"));
+        var source = role.Equals("cat", StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(repoRoot, "tests", "Fixtures", "Characters", role)
+            : Path.Combine(repoRoot, "Characters", role);
+        var destination = Path.Combine(destinationRoot, role);
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source))
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+    }
     static IEnumerable<Control> Descendants(Control root) => root.Controls.Cast<Control>().SelectMany(c => new[] { c }.Concat(Descendants(c)));
     static IEnumerable<Control> ButtonControls(Control root) => Descendants(root).Where(control => control is IButtonControl);
     static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
@@ -200,6 +353,10 @@ internal static class Program
             var switchControls = Descendants(page).Where(control => control.GetType().FullName?.Contains("AntdUI", StringComparison.Ordinal) == true).ToArray();
             Require(switchControls.Count(control => control.GetType().Name == "Switch") >= 5, "interactions uses AntdUI switches");
             Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber"), "interactions uses AntdUI numeric input");
+            var desireInputs = Descendants(page).Where(control => control.GetType().Name == "InputNumber"
+                && Convert.ToDecimal(Property(control, "Minimum")) == 0m
+                && Convert.ToDecimal(Property(control, "Maximum")) == 100m).ToArray();
+            Require(desireInputs.Length >= 3, "interactions exposes 0-100 jump/climb/window jump desire inputs");
             Require(page is ScrollableControl scrollable && scrollable.VerticalScroll.Maximum > 0, "interactions page exposes vertical scrolling for full content");
         }
         if (name == "Settings")
@@ -215,6 +372,10 @@ internal static class Program
             Require(Descendants(page).Any(control => control.GetType().Name == "InputNumber" &&
                 Convert.ToDecimal(Property(control, "Minimum")) == 0.1m &&
                 Convert.ToDecimal(Property(control, "Maximum")) == 8m), "pets uses AntdUI scale input");
+            var desireInputs = Descendants(page).Where(control => control.GetType().Name == "InputNumber"
+                && Convert.ToDecimal(Property(control, "Minimum")) == 0m
+                && Convert.ToDecimal(Property(control, "Maximum")) == 100m).ToArray();
+            Require(desireInputs.Length >= 3, "pets exposes per-instance jump/climb/window jump desire inputs");
         }
         if (name == "Characters")
         {

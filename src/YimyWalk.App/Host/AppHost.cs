@@ -66,6 +66,7 @@ internal sealed class AppHost : ApplicationContext
     public CharacterCatalog Catalog => _catalog;
     internal FrameSurfaceCache SurfaceCache => _surfaceCache;
     public string CharacterRoot { get; private set; } = string.Empty;
+    internal string? CharacterRootOverride { get; set; }
     public BatchCreationQueue Batch => _batch;
     public SettingsDocument Settings => _settings;
     public SettingsLoadResult SettingsLoad => _settingsLoad;
@@ -78,6 +79,7 @@ internal sealed class AppHost : ApplicationContext
             var bounded = Math.Clamp(value, SettingsDocument.MinScale, SettingsDocument.MaxScale);
             if (Math.Abs(_settings.Scale - bounded) < 0.0001f) return;
             _settings = _settings with { Scale = bounded };
+            _session.GlobalScale = bounded;
             foreach (var window in _windows.Windows) window.SetGlobalScale(bounded);
             if (!_disposed && CharacterRoot.Length > 0) SaveSettings(debounce: true);
         }
@@ -117,6 +119,51 @@ internal sealed class AppHost : ApplicationContext
             if (!_disposed && CharacterRoot.Length > 0)
             {
                 _settings = _settings with { ActivityRate = bounded };
+                SaveSettings(debounce: true);
+            }
+        }
+    }
+    public float JumpDesire
+    {
+        get => _session.JumpDesire;
+        set
+        {
+            var bounded = ClampDesire(value, SettingsDocument.DefaultJumpDesire);
+            if (Math.Abs(_session.JumpDesire - bounded) < 0.0001f) return;
+            _session.JumpDesire = bounded;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { JumpDesire = bounded };
+                SaveSettings(debounce: true);
+            }
+        }
+    }
+    public float ClimbDesire
+    {
+        get => _session.ClimbDesire;
+        set
+        {
+            var bounded = ClampDesire(value, SettingsDocument.DefaultClimbDesire);
+            if (Math.Abs(_session.ClimbDesire - bounded) < 0.0001f) return;
+            _session.ClimbDesire = bounded;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { ClimbDesire = bounded };
+                SaveSettings(debounce: true);
+            }
+        }
+    }
+    public float WindowJumpDesire
+    {
+        get => _session.WindowJumpDesire;
+        set
+        {
+            var bounded = ClampDesire(value, SettingsDocument.DefaultWindowJumpDesire);
+            if (Math.Abs(_session.WindowJumpDesire - bounded) < 0.0001f) return;
+            _session.WindowJumpDesire = bounded;
+            if (!_disposed && CharacterRoot.Length > 0)
+            {
+                _settings = _settings with { WindowJumpDesire = bounded };
                 SaveSettings(debounce: true);
             }
         }
@@ -216,7 +263,12 @@ internal sealed class AppHost : ApplicationContext
         _session.NeedRate = _settings.HungerRate;
         _session.DefaultWalkEnabled = _settings.DefaultWalkEnabled;
         _session.ActivityRate = _settings.ActivityRate;
-        var root = Path.Combine(AppContext.BaseDirectory, "Characters");
+        _session.JumpDesire = _settings.JumpDesire;
+        _session.ClimbDesire = _settings.ClimbDesire;
+        _session.WindowJumpDesire = _settings.WindowJumpDesire;
+        _session.GlobalScale = _settings.Scale;
+        var root = CharacterRootOverride;
+        if (string.IsNullOrWhiteSpace(root)) root = Path.Combine(AppContext.BaseDirectory, "Characters");
         if (!Directory.Exists(root)) root = Path.Combine(Environment.CurrentDirectory, "Characters");
         CharacterRoot = root;
         var definitions = _catalog.Scan(root);
@@ -509,7 +561,10 @@ internal sealed class AppHost : ApplicationContext
     private void EnsureSelectedRole()
     {
         if (_catalog.TryGet(_settings.SelectedRoleId, out _)) return;
-        var fallback = _catalog.Definitions.Values.OrderBy(definition => definition.Id).FirstOrDefault();
+        var fallback = _catalog.Definitions.Values
+            .OrderByDescending(definition => definition.Id.Equals("slime", StringComparison.OrdinalIgnoreCase))
+            .ThenBy(definition => definition.Id)
+            .FirstOrDefault();
         if (fallback is null) return;
         _settings = _settings with { SelectedRoleId = fallback.Id };
         SaveSettings();
@@ -550,6 +605,9 @@ internal sealed class AppHost : ApplicationContext
         };
         _manager.SetSettingsStatus(status);
     }
+
+    private static float ClampDesire(float value, float fallback)
+        => float.IsFinite(value) ? Math.Clamp(value, SettingsDocument.MinDesire, SettingsDocument.MaxDesire) : fallback;
 
     protected override void Dispose(bool disposing)
     {

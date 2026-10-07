@@ -53,7 +53,7 @@ public sealed class VirtualFoodSystem
     public bool TryClaim(PetInstance pet, Guid targetId)
     {
         ArgumentNullException.ThrowIfNull(pet);
-        if (pet.State is PetState.Dragged or PetState.Jump or PetState.Apex or PetState.Fall or PetState.Eat)
+        if (pet.State is not (PetState.Idle or PetState.Walk))
             return false;
         var target = _targets.FirstOrDefault(item => item.Id == targetId);
         if (target is null || target.State != VirtualFoodState.Available) return false;
@@ -85,7 +85,7 @@ public sealed class VirtualFoodSystem
             }
             if (target.State != VirtualFoodState.Claimed || target.ClaimantId is not { } claimantId
                 || !byId.TryGetValue(claimantId, out var pet)
-                || pet.State is PetState.Dragged or PetState.Jump or PetState.Apex or PetState.Fall or PetState.Eat)
+                || pet.State is not (PetState.Idle or PetState.Walk))
             {
                 if (target.State == VirtualFoodState.Claimed)
                 {

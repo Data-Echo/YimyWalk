@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using YimyWalk.Core.Simulation;
 
 var rounds = args.Length == 0 ? 1 : int.TryParse(args[0], out var parsed) && parsed > 0 && parsed <= 20 ? parsed : throw new ArgumentException("Rounds must be between 1 and 20.");
-var role = args.Length < 2 ? "cat" : args[1];
+var role = args.Length < 2 ? "slime" : args[1];
 var landingRequested = args.Any(arg => arg.Equals("landing", StringComparison.OrdinalIgnoreCase));
 var targetedRequested = args.Any(arg => arg.Equals("targeted", StringComparison.OrdinalIgnoreCase));
 var appAssemblyCandidates = new[]
@@ -42,6 +42,11 @@ Console.WriteLine("SETTINGS STORE DEFAULT_SAVE_BACKUP=PASS");
 Directory.Delete(settingsRoot, recursive: true);
 var type = app.GetType("YimyWalk.App.Host.AppHost", true)!;
 var host = Activator.CreateInstance(type, nonPublic: true)!;
+var characterTemp = Path.Combine(Path.GetTempPath(), "YimyWalkDesktopSmoke-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(characterTemp);
+CopyCharacterFixture("slime", characterTemp);
+CopyCharacterFixture("cat", characterTemp);
+type.GetProperty("CharacterRootOverride", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(host, characterTemp);
 const string iconResourceName = "YimyWalk.App.Resources.yimywalk.ico";
 if (!app.GetManifestResourceNames().Contains(iconResourceName, StringComparer.Ordinal))
     throw new InvalidOperationException($"application icon resource is not embedded: {iconResourceName}");
@@ -310,6 +315,7 @@ if (host is IDisposable disposableHost)
     process.Refresh();
     Console.WriteLine($"FINAL {Metrics(process)}");
 }
+if (Directory.Exists(characterTemp)) Directory.Delete(characterTemp, true);
 
 static string Metrics(System.Diagnostics.Process process)
     => $"CPU_S={process.TotalProcessorTime.TotalSeconds:0.000} WS={process.WorkingSet64} PRIVATE={process.PrivateMemorySize64} MANAGED={GC.GetTotalMemory(false)} HANDLES={process.HandleCount} USER={Native.GetGuiResources(process.Handle, 1)} GDI={Native.GetGuiResources(process.Handle, 0)}";
@@ -321,6 +327,18 @@ static float FootY(object instance)
 {
     var value = Property(instance, "FootPosition");
     return (float)value.GetType().GetField("Y")!.GetValue(value)!;
+}
+
+static void CopyCharacterFixture(string role, string destinationRoot)
+{
+    var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../"));
+    var source = role.Equals("cat", StringComparison.OrdinalIgnoreCase)
+        ? Path.Combine(repoRoot, "tests", "Fixtures", "Characters", role)
+        : Path.Combine(repoRoot, "Characters", role);
+    var destination = Path.Combine(destinationRoot, role);
+    Directory.CreateDirectory(destination);
+    foreach (var file in Directory.EnumerateFiles(source))
+        File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
 }
 
 static bool SameIcon(Icon expected, Icon actual)

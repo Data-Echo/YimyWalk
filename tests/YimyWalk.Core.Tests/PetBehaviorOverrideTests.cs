@@ -43,6 +43,18 @@ public sealed class PetBehaviorOverrideTests
     }
 
     [Fact]
+    public void DesireOverridesClampAndResetToGlobal()
+    {
+        var custom = new PetBehaviorOverrides(JumpDesireOverride: 2f, ClimbDesireOverride: -1f, WindowJumpDesireOverride: 0.85f);
+
+        Assert.Equal(1f, custom.ResolveJumpDesire(0.2f));
+        Assert.Equal(0f, custom.ResolveClimbDesire(0.2f));
+        Assert.Equal(0.85f, custom.ResolveWindowJumpDesire(0.2f));
+        Assert.Equal(0.2f, (custom with { JumpDesireOverride = null }).ResolveJumpDesire(0.2f));
+        Assert.Equal(0.2f, (custom with { WindowJumpDesireOverride = null }).ResolveWindowJumpDesire(0.2f));
+    }
+
+    [Fact]
     public void InstanceScaleOverrideStaysIndependentFromGlobalScaleUntilReset()
     {
         var inherited = new PetInstance(TestSpriteFactory.LoadSpriteOnly("scale-inherited"), new Vector2(100, 720));

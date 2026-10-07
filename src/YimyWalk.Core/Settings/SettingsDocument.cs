@@ -10,10 +10,15 @@ public sealed record SettingsDocument
     public const float MaxScale = 8f;
     public const float MinActivityRate = 0.1f;
     public const float MaxActivityRate = 4f;
+    public const float MinDesire = 0f;
+    public const float MaxDesire = 1f;
+    public const float DefaultJumpDesire = 0.2f;
+    public const float DefaultClimbDesire = 0.12f;
+    public const float DefaultWindowJumpDesire = 0.2f;
     public const int MaxWarningLimit = 10_000;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
-    public string SelectedRoleId { get; init; } = "cat";
+    public string SelectedRoleId { get; init; } = "slime";
     public float Scale { get; init; } = 1f;
     public float ActivityRate { get; init; } = 1f;
     public bool DefaultWalkEnabled { get; init; } = true;
@@ -21,6 +26,9 @@ public sealed record SettingsDocument
     public bool DialogueEnabled { get; init; } = true;
     public bool HungerEnabled { get; init; } = true;
     public float HungerRate { get; init; } = 1f;
+    public float JumpDesire { get; init; } = DefaultJumpDesire;
+    public float ClimbDesire { get; init; } = DefaultClimbDesire;
+    public float WindowJumpDesire { get; init; } = DefaultWindowJumpDesire;
     public bool ExternalEventsEnabled { get; init; }
     public bool WindowLandingEnabled { get; init; }
     public string? PreferredDisplayId { get; init; }
@@ -43,6 +51,12 @@ public sealed record SettingsDocument
             return Fail($"activityRate must be between {MinActivityRate} and {MaxActivityRate}", out error);
         if (!IsInRange(HungerRate, MinActivityRate, MaxActivityRate))
             return Fail($"hungerRate must be between {MinActivityRate} and {MaxActivityRate}", out error);
+        if (!IsInRange(JumpDesire, MinDesire, MaxDesire))
+            return Fail($"jumpDesire must be between {MinDesire} and {MaxDesire}", out error);
+        if (!IsInRange(ClimbDesire, MinDesire, MaxDesire))
+            return Fail($"climbDesire must be between {MinDesire} and {MaxDesire}", out error);
+        if (!IsInRange(WindowJumpDesire, MinDesire, MaxDesire))
+            return Fail($"windowJumpDesire must be between {MinDesire} and {MaxDesire}", out error);
         if (PreferredDisplayId is { Length: > 128 } or { Length: 0 })
             return Fail("preferredDisplayId must be empty or at most 128 characters", out error);
         if (WarningLimit is <= 0 or > MaxWarningLimit)

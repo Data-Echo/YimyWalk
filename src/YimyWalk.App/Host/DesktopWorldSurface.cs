@@ -51,6 +51,8 @@ internal sealed class DesktopWorldSurface : IWorldSurface
 
     public bool IsValid => GetSnapshot().Displays.Count > 0;
     public bool WindowLandingEnabled { get => _windowSurfaces.Enabled; set => _windowSurfaces.Enabled = value; }
+    public IReadOnlyList<WindowSurfaceCandidate> JumpCandidates => _windowSurfaces.Candidates;
+    public float DisplayScaleForPoint(Vector2 point) => ScaleForPoint(point);
     public bool WindowSurfaceSnapshotValid => _windowSurfaces.HasValidSnapshot;
     public Func<IntPtr, bool>? ExcludeWindow { get => _windowSurfaces.ExcludeWindow; set => _windowSurfaces.ExcludeWindow = value; }
     public IReadOnlyList<WindowSurfaceCandidate> WindowSurfaceCandidates => _windowSurfaces.Candidates;

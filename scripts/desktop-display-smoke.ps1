@@ -7,14 +7,21 @@ if (-not $LogPath) { $LogPath = Join-Path $root ('artifacts\dual-display-' + (Ge
 $LogPath = [IO.Path]::GetFullPath($LogPath)
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($LogPath)) | Out-Null
 Push-Location $root
+$fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('YimyWalk-display-characters-' + [Guid]::NewGuid().ToString('N'))
 try {
+    New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
+    Copy-Item (Join-Path $root 'Characters\slime') (Join-Path $fixtureRoot 'slime') -Recurse
+    Copy-Item (Join-Path $root 'tests\Fixtures\Characters\cat') (Join-Path $fixtureRoot 'cat') -Recurse
     & $dotnet build tools\DesktopDisplaySmoke\DesktopDisplaySmoke.csproj -c Release -p:Platform=x64
     if ($LASTEXITCODE -ne 0) { throw 'DesktopDisplaySmoke build failed.' }
-    $argsList = @((Join-Path $root 'Characters'))
+    $argsList = @($fixtureRoot)
     if ($InventoryOnly) { $argsList += '--inventory' }
     else { $argsList += @('--rounds', $Rounds.ToString()) }
     & $dotnet (Join-Path $root 'tools\DesktopDisplaySmoke\bin\x64\Release\net8.0-windows\DesktopDisplaySmoke.dll') @argsList | Tee-Object -FilePath $LogPath
     $result = $LASTEXITCODE
     Write-Host "Desktop display evidence: $LogPath"
     exit $result
-} finally { Pop-Location }
+} finally {
+    if (Test-Path -LiteralPath $fixtureRoot) { Remove-Item -LiteralPath $fixtureRoot -Recurse -Force }
+    Pop-Location
+}

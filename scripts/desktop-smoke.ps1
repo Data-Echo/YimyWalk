@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 20)][int]$Rounds = 1,
-    [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$Role = 'cat',
+    [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$Role = 'slime',
     [switch]$Landing,
     [switch]$Targeted
 )

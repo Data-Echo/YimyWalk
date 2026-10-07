@@ -5,10 +5,11 @@ $package = (Resolve-Path -LiteralPath $Path).Path
 $manifest = Get-Content -LiteralPath (Join-Path $package 'PACKAGE_MANIFEST.json') -Raw | ConvertFrom-Json
 if ($manifest.version -ne $Version) { throw "Package version must be $Version." }
 foreach ($file in @('YimyWalk.exe', 'Start-YimyWalk.ps1', 'run-yimywalk.ps1',
-    'Characters/cat/sprite.png', 'Characters/slime/sprite.png', 'THIRD_PARTY_NOTICES.md',
+    'Characters/slime/sprite.png', 'THIRD_PARTY_NOTICES.md',
     'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt', 'RELEASE_NOTES.md', 'PACKAGE_README.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path $package $file) -PathType Leaf)) { throw "Missing: $file" }
 }
+if (Test-Path -LiteralPath (Join-Path $package 'Characters/cat')) { throw 'Release package must not include the built-in cat sample.' }
 $executable = Get-Item -LiteralPath (Join-Path $package 'YimyWalk.exe')
 $fileVersion = $executable.VersionInfo.FileVersion
 if ([string]::IsNullOrWhiteSpace($fileVersion) -or $fileVersion.Split('.')[0..2] -join '.' -ne $Version) {

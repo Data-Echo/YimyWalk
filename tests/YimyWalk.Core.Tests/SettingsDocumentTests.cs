@@ -19,6 +19,9 @@ public sealed class SettingsDocumentTests
         Assert.True(settings.DialogueEnabled);
         Assert.True(settings.HungerEnabled);
         Assert.Equal(1f, settings.HungerRate);
+        Assert.Equal(0.2f, settings.JumpDesire);
+        Assert.Equal(0.12f, settings.ClimbDesire);
+        Assert.Equal(0.2f, settings.WindowJumpDesire);
         Assert.False(settings.ExternalEventsEnabled);
         Assert.False(settings.WindowLandingEnabled);
         Assert.Null(settings.PreferredDisplayId);
@@ -33,6 +36,10 @@ public sealed class SettingsDocumentTests
     [InlineData("{\"scale\":NaN}")]
     [InlineData("{\"scale\":1e999}")]
     [InlineData("{\"activityRate\":5}")]
+    [InlineData("{\"jumpDesire\":-0.1}")]
+    [InlineData("{\"climbDesire\":1.1}")]
+    [InlineData("{\"windowJumpDesire\":-0.1}")]
+    [InlineData("{\"windowJumpDesire\":1.1}")]
     [InlineData("{\"warningLimit\":0}")]
     [InlineData("{\"warningLimit\":10001}")]
     public void InvalidValuesReturnDefaults(string json)
@@ -64,6 +71,7 @@ public sealed class SettingsDocumentTests
             DialogueEnabled = false,
             HungerEnabled = false,
             HungerRate = 0.5f,
+            WindowJumpDesire = 0.85f,
             ExternalEventsEnabled = true,
             WindowLandingEnabled = true,
             PreferredDisplayId = "DISPLAY1",
@@ -86,6 +94,15 @@ public sealed class SettingsDocumentTests
         var saved = Encoding.UTF8.GetString(SettingsDocument.Serialize(value));
         Assert.Contains("\"jumpDesire\": 0.4", saved);
         Assert.Contains("\"climbDesire\": 0", saved);
+        Assert.Contains("\"windowJumpDesire\": 0.2", saved);
+    }
+
+    [Fact]
+    public void OldSettingsAcquireWindowJumpDesireDefault()
+    {
+        Assert.True(SettingsDocument.TryParse("{}"u8, out var value, out _));
+        var saved = Encoding.UTF8.GetString(SettingsDocument.Serialize(value));
+        Assert.Contains("\"windowJumpDesire\": 0.2", saved);
     }
 
     [Fact]

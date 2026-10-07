@@ -42,4 +42,17 @@ internal static class InstanceSettingState
         => scaleOverride is null
             ? $"跟随全局 · 当前大小 {global:0.0}×"
             : $"自定义 · 当前大小 {scaleOverride.Value:0.0}×";
+    public static string JumpDesireSource(PetBehaviorOverrides overrides, float global)
+        => DesireSource(overrides.JumpDesireOverride, overrides.ResolveJumpDesire(global));
+
+    public static string ClimbDesireSource(PetBehaviorOverrides overrides, float global)
+        => DesireSource(overrides.ClimbDesireOverride, overrides.ResolveClimbDesire(global));
+
+    public static string WindowJumpDesireSource(PetBehaviorOverrides overrides, float global)
+        => DesireSource(overrides.WindowJumpDesireOverride, overrides.ResolveWindowJumpDesire(global));
+
+    private static string DesireSource(float? custom, float effective)
+        => custom is null
+            ? $"跟随全局 · 当前 {effective * 100f:0}%"
+            : $"自定义 · 当前 {effective * 100f:0}%";
 }

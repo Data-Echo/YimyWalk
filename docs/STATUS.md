@@ -330,4 +330,49 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 - 全局和应用级布尔项的 AntdUI Switch 旁显示“开启/关闭”文字状态，且状态标签由控件事件同步；这保证状态不只依赖颜色或滑块位置。
 # 2026-10-07 主动运动与预览（实施中）
 
-用户已确认总体方案和七项补充规则；当前任务为 M4 改进。详见 `superpowers/specs/2026-10-07-yimywalk-autonomous-movement-design.md` 的最终补充规则和 `superpowers/plans/2026-10-07-autonomous-movement.md`。全局欲望位于互动页，实例覆盖位于桌宠页；窗口跳跃受真实弹道/限速约束，顶部释放保留窗口落脚；cat 清理仅限内置包和新发布产物。当前仅方案确认，新增运动与 UI 尚未测试通过，Windows 桌面行为未验证。
+用户已确认总体方案和七项补充规则；当前任务为 M4 改进。详见 `superpowers/specs/2026-10-07-yimywalk-autonomous-movement-design.md` 的最终补充规则和 `superpowers/plans/2026-10-07-autonomous-movement.md`。全局欲望位于互动页，实例覆盖位于桌宠页；窗口跳跃受真实弹道/限速约束，顶部释放保留窗口落脚；cat 清理仅限内置包和新发布产物。Core/UI 实现及可重复验证已完成；主动跳跃、侧边攀爬、顶部行走等新增桌面路径仍按下文标记为未验证。
+
+## 2026-10-07 主动运动与预览实施交接
+
+**代码与资源**：默认新安装配置使用 `slime`；仓库内置 `Characters/cat` 已移出，旧猫咪仅保留在 `tests/Fixtures/Characters/cat` 供多角色回归。优化后的史莱姆 PNG 已通过 `CharacterValidator`（1254×1254、单格 418×418、RGBA、9 帧），发布包来源为用户提供的已优化发布素材，SHA-256 为 `BC92811F4B7149AE948A07A16E1A72662E175EC6DCB5BBC398B4138993527AF1`。测试 fixture 中旧 cat SHA-256 为 `22C9F2469645A34A64FB8CA8C63ABAA0A3D984191701BC11F5B984E8A21E94BD`。
+
+**主动行为**：Core 已实现每只实例独立的跳跃 8–16 秒等待、攀爬 10–20 秒等待、失败重置、暂停冻结、边缘 12px 去重、右侧登顶向左/左侧登顶向右、顶部端点普通 Fall、显示器/缩放变化解除攀附，以及带水平速度、下降交会和有效落脚区间检查的窗口目标规划。失效或移动目标继续当前物理，不瞬移、不吸附、不突破速度上限。欲望 0 只禁止新行为；拖拽、Eat、空中、失去支撑和暂停优先级保持不变。
+
+**验证**：`dotnet test YimyWalk.sln -c Release --no-restore` 通过 **123/123**；App x64 Release 构建 0 警告/0 错误。`ManagerUiSmoke` 完整回归通过，包含清空队列、实例大小、全局欲望 35%/65% 映射、单只 70%/80% 覆盖与重置、200ms 状态刷新、托盘和混合角色删除；`--preview-pixels` 通过方形/宽图/高图、不同源尺寸与 96/120/144/192 控件尺寸的实际像素检查；baseline 页面布局 smoke 通过。预览只显示 idle1/index 0，等比缩放不会改变宠物实际大小。发布构建 `0.1.9` 与 `scripts/test-release-package.ps1` 通过（11 个文件、10 条 SHA-256 清单，角色清单只有 `slime`）。
+
+**桌面验证边界**：本轮 Windows smoke 实测了双显示器快照、窗口顶部落脚/关闭后普通下落和角色刷新保留；批量 1/10 已输出并通过，50/100 批量阶段因大尺寸多窗口耗时过长而中止，因此本轮不把 50/100 重新标记为通过。主动跳跃、侧边攀爬、顶部行走端点、目标移动/失效、暂停恢复和真实 DPI/显示器拓扑变化尚未在真实桌面上逐项验证；Core/UI 可重复测试不能替代这些桌面验证。既有删除、状态刷新、托盘、拖拽和资源释放回归仍保留在测试工具中。
+补充：`DesktopInputSmoke` 在当前双显示器会话中完整通过（透明/实体命中、拖拽抛掷、托盘隐藏/显示/清空、角色刷新成功/失败保留、设置开关、虚拟食物、外部事件和退出释放）；`desktop-display-smoke.ps1 -InventoryOnly` 通过双显示器 PerMonitorV2/DPI 元数据检查。该结果仍不等于主动跳跃、攀爬和显示器变化运行路径已实测。
+补充验证：`desktop-display-smoke.ps1 -Rounds 1` 在当前双显示器会话通过，结果为 `CHECKS=79 FAILURES=0`，覆盖两台显示器的 DPI/缩放、slime 与 fixture cat 的真实渲染/跳跃/拖拽、跨屏拖拽、资源轮次和清理。该 smoke 明确仍将物理断开重连、睡眠恢复、任务栏配置变化和负坐标布局列为未验证；它也不覆盖主动攀爬路径。
+
+## 2026-10-07 autonomous movement correction handoff
+
+The approved correction is implemented. Edge climbing now renders the static `Apex` frame (frame 7); top walking keeps the direction-specific walk frame. A new `WindowJumpDesire` is available as a global interaction setting and as a per-pet inherit/override/reset setting. Values are entered as percentages and normalized to `[0,1]`; invalid or non-finite values fall back safely. `0%` prevents new window-jump attempts without interrupting an existing motion, while `100%` prioritizes a reachable visible-window target on every eligible attempt and otherwise uses the ordinary jump path. Existing activity, pause, drag, landing, and speed-limit priorities remain in force.
+
+Autonomous attempt timers use an initial randomized delay and an 8-16 second retry interval for jumps; failed probability checks consume the current attempt and schedule the next one. Climb attempts use their own 10-20 second interval with edge/display de-duplication. Pause/resume does not replay overdue actions. Window target planning checks horizontal speed/distance, descending intersection time, and the valid landing interval; moving or invalid targets fall back to ordinary physics without snapping or exceeding speed limits.
+
+Verification completed:
+- `dotnet test YimyWalk.sln -c Release --no-restore`: 131/131.
+- App x64 Release build: 0 warnings, 0 errors.
+- `ManagerUiSmoke`: global 35/65/55% mapping, per-pet 70/80/90% override/reset, state refresh, tray/list regressions passed.
+- `ManagerUiSmoke --preview-pixels`: square, wide, tall frames at 96/120/144/192 control sizes passed; this checks rendered pixels and aspect ratio, not only `Zoom`.
+- `validate-character.ps1 -Path Characters/slime`: optimized 1254x1254 RGBA sprite, 9 frames, passed.
+- Release package `artifacts/publish/window-jump-corrections`, version 0.1.9: package test passed; only `slime` is shipped. Sprite SHA-256: `BC92811F4B7149AE948A07A16E1A72662E175EC6DCB5BBC398B4138993527AF1`.
+- `scripts/desktop-input-smoke.ps1` passed tray, drag/toss, focus, resource cleanup, and settings regressions. `scripts/desktop-display-smoke.ps1 -Rounds 1` passed 79 checks across two displays (DPI 120 and 96), per-display scale, rendering, and cross-screen drag; physical disconnect/reconnect, sleep/resume, and taskbar topology remain unverified.
+
+The repository sample and release output contain only `slime`; the `cat` test fixture remains under `tests/Fixtures/Characters/cat` for multi-role regression coverage. Real desktop observation of proactive window jumping, Apex edge climbing, top walking endpoints, target movement/invalidations, and pause recovery remains unverified. The physical disconnect/reconnect, sleep/resume, and taskbar topology cases in the full DPI/display-change matrix also remain unverified; passed two-display smoke checks must not be inferred to cover them.
+## 2026-10-07 charged jump trajectories
+
+The approved charged-jump correction is implemented in Core. Ordinary autonomous jump attempts now make one mode decision after the existing retry gate: they either launch immediately at the role's base jump speed or enter `JumpCharge` for a sampled `0.15–0.45 s` interval. While charging, the pet remains stationary, retains its horizontal velocity, and renders the seventh (`FrameKind.Apex`) frame. The sampled duration maps to a finite launch speed capped at `1.75x` the role's base jump speed. A zero ordinary jump desire prevents new charges and jumps without interrupting an active charge or airborne motion. Pause remains a session-level freeze and drag cancels the charge through the existing priority path.
+
+Window-jump planning now evaluates the descending intersection, scaled-frame landing margins, horizontal distance, and the bounded launch-speed range. A reachable candidate above the base apex enters a planned charge with the required launch speed, up to the same `1.75x` cap; horizontal speed remains bounded by the existing walking-speed cap. The arc is integrated by the existing Core physics path. Candidate movement or disappearance does not snap, attach, or replan the active pet; normal surface selection continues to decide any later landing.
+
+Repeatable verification:
+
+- `dotnet test YimyWalk.sln -c Release --no-restore`: **140/140** Core tests passed, including charge-frame/stationary behavior, randomized duration mapping, zero-desire and pause rules, high-window reachability, speed/landing bounds, and target invalidation fallback.
+- `dotnet build src/YimyWalk.App/YimyWalk.App.csproj -c Release -r win-x64 --no-restore`: **0 warnings, 0 errors**.
+- `ManagerUiSmoke --preview-pixels`: preview pixel/aspect checks passed at 96/120/144/192 control sizes; existing settings, tray, list refresh, drag, and resource-release regressions remain covered.
+- `scripts/desktop-input-smoke.ps1`: **PASS**.
+- `scripts/desktop-display-smoke.ps1 -Rounds 1`: **PASS**, `CHECKS=79 FAILURES=0`; the run also covered the existing cat fixture and shipped slime at both displays/DPI values.
+
+The new charged ordinary-jump and high visible-window trajectory paths have not been visually observed in a live desktop session yet. The latest display smoke confirms the existing manual upward jump path and rendering, but it is not evidence of autonomous charge timing or high-window landing. Physical display disconnect/reconnect, sleep/resume, and taskbar-topology cases remain unverified as recorded above.
+- `scripts/build-yimywalk.ps1 -Version 0.1.10 -PublishPath artifacts/publish/charged-jump-trajectories` and `scripts/test-release-package.ps1`: **PACKAGE PASS**, version `0.1.10`, 11 files/10 checksums; manifest contains only `slime`. The shipped optimized slime sprite SHA-256 remains `BC92811F4B7149AE948A07A16E1A72662E175EC6DCB5BBC398B4138993527AF1`.
