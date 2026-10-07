@@ -52,7 +52,9 @@ public sealed class AutonomousBoundaryTests
     {
         using var definition = TestSpriteFactory.LoadSpriteOnly("window-trajectory-bounds");
         var surface = new World { WindowLandingEnabled = true };
-        surface.JumpCandidates = [new("too-high", new(300, 200, 500, 280), true, false, false, false)];
+        // Height 520 is now intentionally reachable. A target this far away
+        // still cannot be reached under the unchanged horizontal speed cap.
+        surface.JumpCandidates = [new("too-far", new(1100, 200, 1250, 280), true, false, false, false)];
         var pet = NewWalker(definition, new(300, 720));
         var engine = new PetEngine(surface, new FixedRandom())
         {
@@ -168,10 +170,12 @@ public sealed class AutonomousBoundaryTests
     {
         using var definition = TestSpriteFactory.LoadSpriteOnly("window-lost");
         var surface = new World { WindowLandingEnabled = true };
-        surface.JumpCandidates = [new("target", new(300, 660, 500, 800), true, false, false, false)];
+        surface.JumpCandidates = [new("target", new(300, 680, 500, 800), true, false, false, false)];
         var pet = NewWalker(definition, new(300, 720));
-        var engine = new PetEngine(surface, new FixedRandom()) { JumpDesire = 1 };
+        var engine = new PetEngine(surface, new FixedRandom()) { JumpDesire = 1, WindowJumpDesire = 1 };
         engine.Tick(pet, .01);
+        for (var i = 0; i < 10 && pet.State == PetState.JumpCharge; i++) engine.Tick(pet, .1);
+        Assert.Equal(PetState.Jump, pet.State);
         var start = pet.FootPosition;
         var velocity = pet.Velocity;
         surface.JumpCandidates = [];

@@ -37,6 +37,7 @@ public sealed class PetInstance
     internal float JumpChargeElapsed { get; set; }
     internal float JumpChargeDuration { get; set; }
     internal float JumpChargeLaunchSpeed { get; set; }
+    internal float JumpChargeMaxLaunchSpeed { get; set; }
     internal float ClimbAttemptDelay { get; set; }
     internal bool ClimbEdgeArmed { get; set; } = true;
     internal string? AttachedDisplayId { get; set; }
@@ -86,11 +87,12 @@ public sealed class PetInstance
         Velocity = new Vector2(Velocity.X, -Definition.Movement.JumpSpeed);
     }
 
-    internal void StartJumpCharge(float duration, float launchSpeed)
+    internal void StartJumpCharge(float duration, float launchSpeed, float maxLaunchSpeed = 0)
     {
         JumpChargeElapsed = 0;
         JumpChargeDuration = float.IsFinite(duration) ? Math.Max(0, duration) : 0;
         JumpChargeLaunchSpeed = float.IsFinite(launchSpeed) ? Math.Max(0, launchSpeed) : Definition.Movement.JumpSpeed;
+        JumpChargeMaxLaunchSpeed = float.IsFinite(maxLaunchSpeed) ? Math.Max(0, maxLaunchSpeed) : 0;
         State = PetState.JumpCharge;
         StateTime = 0;
         Velocity = new Vector2(Velocity.X, 0);
@@ -101,6 +103,7 @@ public sealed class PetInstance
         JumpChargeElapsed = 0;
         JumpChargeDuration = 0;
         JumpChargeLaunchSpeed = 0;
+        JumpChargeMaxLaunchSpeed = 0;
     }
 
     public bool Feed(float amount = 0.35f)

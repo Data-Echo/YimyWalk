@@ -17,6 +17,10 @@ public sealed class PetEngine
     public const float JumpChargeDurationMin = 0.15f;
     public const float JumpChargeDurationMax = 0.45f;
     public const float ChargedJumpSpeedMultiplier = 1.75f;
+    // Ordinary attention-seeking jumps keep the 1.75x cap. Window jumps are
+    // an explicit target action and get a separate finite ceiling so a normal
+    // desktop-height window can be reached without making every jump huge.
+    public const float WindowJumpSpeedMultiplier = 6f;
 
     private readonly IRandomSource _random;
     public bool HungerEnabled { get; set; } = true;
@@ -81,7 +85,7 @@ public sealed class PetEngine
             ? new SurfaceSelection(pet.AttachedDisplayArea, IsFallback: true, SourceId: pet.AttachedDisplayId)
             : Surface.SurfaceForPet(queryStart, halfWidth, nextFootPosition);
         var area = selectedSurface.Area;
-        if ((pet.State is PetState.Idle or PetState.Walk or PetState.Eat)
+        if ((pet.State is PetState.Idle or PetState.Walk or PetState.Eat or PetState.JumpCharge)
             && selectedSurface.IsFallback
             && pet.FootPosition.Y < area.Bottom - 0.5f)
         {
@@ -92,6 +96,7 @@ public sealed class PetEngine
             }
             pet.State = PetState.Fall;
             pet.StateTime = 0;
+            pet.ClearJumpCharge();
         }
         pet.StateTime += delta;
         pet.AnimationTime += delta;
@@ -141,7 +146,7 @@ public sealed class PetEngine
                 if (TryStartClimb(pet, area, delta))
                     break;
                 IntegrateWalking(pet, area, Surface.HorizontalTravelBounds, delta);
-                TryAutonomousJump(pet);
+                TryAutonomousJump(pet, selectedSurface.SourceId);
                 break;
             case PetState.Idle:
                 pet.Velocity = Vector2.Zero;
@@ -265,7 +270,9 @@ public sealed class PetEngine
 
         var remainder = Math.Max(0, pet.JumpChargeElapsed - pet.JumpChargeDuration);
         var launchSpeed = Math.Clamp(pet.JumpChargeLaunchSpeed,
-            0, Math.Max(0, pet.Definition.Movement.JumpSpeed * ChargedJumpSpeedMultiplier));
+            0, Math.Max(0, pet.JumpChargeMaxLaunchSpeed > 0
+                ? pet.JumpChargeMaxLaunchSpeed
+                : pet.Definition.Movement.JumpSpeed * ChargedJumpSpeedMultiplier));
         pet.ClearJumpCharge();
         pet.State = PetState.Jump;
         pet.StateTime = 0;
@@ -280,20 +287,21 @@ public sealed class PetEngine
         var normalized = (duration - JumpChargeDurationMin)
             / Math.Max(0.0001f, JumpChargeDurationMax - JumpChargeDurationMin);
         var launchSpeed = baseSpeed * (1f + Math.Clamp(normalized, 0, 1) * (ChargedJumpSpeedMultiplier - 1f));
-        pet.StartJumpCharge(duration, Math.Min(launchSpeed, baseSpeed * ChargedJumpSpeedMultiplier));
+        pet.StartJumpCharge(duration, Math.Min(launchSpeed, baseSpeed * ChargedJumpSpeedMultiplier),
+            baseSpeed * ChargedJumpSpeedMultiplier);
     }
 
     private void BeginPlannedJumpCharge(PetInstance pet, float launchSpeed)
     {
         var baseSpeed = Math.Max(0, pet.Definition.Movement.JumpSpeed);
-        var maxSpeed = baseSpeed * ChargedJumpSpeedMultiplier;
+        var maxSpeed = baseSpeed * WindowJumpSpeedMultiplier;
         var clampedSpeed = Math.Clamp(float.IsFinite(launchSpeed) ? launchSpeed : baseSpeed, baseSpeed, maxSpeed);
         var normalized = maxSpeed <= baseSpeed
             ? 0
-            : (clampedSpeed / baseSpeed - 1f) / (ChargedJumpSpeedMultiplier - 1f);
+            : (clampedSpeed - baseSpeed) / (maxSpeed - baseSpeed);
         var duration = JumpChargeDurationMin
             + Math.Clamp(normalized, 0, 1) * (JumpChargeDurationMax - JumpChargeDurationMin);
-        pet.StartJumpCharge(duration, clampedSpeed);
+        pet.StartJumpCharge(duration, clampedSpeed, maxSpeed);
     }
 
     private void InitializeAutonomousTimers(PetInstance pet)
@@ -312,7 +320,7 @@ public sealed class PetEngine
     private float RandomDelay(float minimum, float maximum)
         => minimum + (float)Math.Clamp(_random.NextDouble(), 0, 1) * (maximum - minimum);
 
-    private void TryAutonomousJump(PetInstance pet)
+    private void TryAutonomousJump(PetInstance pet, string? supportingSurfaceId)
     {
         if (pet.JumpAttemptDelay > 0 || pet.State != PetState.Walk)
             return;
@@ -322,7 +330,7 @@ public sealed class PetEngine
 
         var speed = Math.Clamp(pet.Definition.Movement.WalkSpeed, 0, 1000);
         var baseJumpSpeed = Math.Max(0, pet.Definition.Movement.JumpSpeed);
-        var maximumJumpSpeed = baseJumpSpeed * ChargedJumpSpeedMultiplier;
+        var maximumJumpSpeed = baseJumpSpeed * WindowJumpSpeedMultiplier;
         var scale = EffectiveScale(pet);
         var leftMargin = pet.Definition.Anchor.X * scale + 4f;
         var rightMargin = MathF.Round(pet.Definition.CellWidth * scale) - pet.Definition.Anchor.X * scale + 4f;
@@ -330,7 +338,7 @@ public sealed class PetEngine
             => JumpTargetPlanner.TrySelect(Surface.JumpCandidates, pet.FootPosition, facing, speed,
                 baseJumpSpeed, pet.Definition.Movement.Gravity, pet.Definition.Movement.MaxFallSpeed,
                 leftMargin, out target, Surface.WorkingAreaForPoint(pet.FootPosition), rightMargin,
-                maximumJumpSpeed);
+                maximumJumpSpeed, supportingSurfaceId);
         if (Surface.WindowLandingEnabled && windowDesire > 0 &&
             _random.NextDouble() < windowDesire &&
             (Plan(pet.Facing, out var target) || Plan(pet.Facing == FacingDirection.Right ? FacingDirection.Left : FacingDirection.Right, out target)))

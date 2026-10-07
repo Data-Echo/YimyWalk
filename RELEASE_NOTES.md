@@ -1,5 +1,11 @@
 # Unreleased
 
+## YimyWalk v0.1.11
+
+- Fixed 100% visible-window jump attempts falling back to a low ordinary jump when the target was above the previous 1.75x ceiling.
+- Window trajectories now use a finite 6x target-only vertical ceiling, retain scaled landing/speed checks, exclude the current supporting window, and use the same ballistic integration as prediction.
+- Ordinary attention-seeking jumps retain the randomized 0.15–0.45 second charge and 1.75x cap.
+
 ## Per-instance pet size
 
 - The Pets page now lets each running instance follow the global scale or use a custom 0.1–8.0× size.

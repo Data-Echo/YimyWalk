@@ -37,13 +37,21 @@ public static class BallisticMotion
     // terminal velocity partway through its duration.
     public static (float Displacement, float Velocity) Advance(float velocity, float gravity, float maxFallSpeed, float seconds)
     {
+        if (!float.IsFinite(velocity) || !float.IsFinite(gravity) || !float.IsFinite(maxFallSpeed)
+            || !float.IsFinite(seconds) || gravity < 0 || maxFallSpeed < 0 || seconds <= 0)
+            return (0, float.IsFinite(velocity) ? velocity : 0);
+
         velocity = Math.Min(velocity, maxFallSpeed);
-        var finalVelocity = Math.Min(maxFallSpeed, velocity + gravity * seconds);
-        // Keep the existing fixed-step integration contract: each simulation
-        // step advances by the velocity reached at that step. The planner
-        // still uses the closed-form descending intersection for candidate
-        // filtering, while SurfaceSelector remains the final authority.
-        return (finalVelocity * seconds, finalVelocity);
+        if (gravity == 0) return (velocity * seconds, velocity);
+        var terminalTime = Math.Max(0, (maxFallSpeed - velocity) / gravity);
+        if (seconds <= terminalTime)
+        {
+            var finalVelocity = velocity + gravity * seconds;
+            return (velocity * seconds + gravity * seconds * seconds / 2f, finalVelocity);
+        }
+
+        var terminalDisplacement = velocity * terminalTime + gravity * terminalTime * terminalTime / 2f;
+        return (terminalDisplacement + maxFallSpeed * (seconds - terminalTime), maxFallSpeed);
     }
 
     public static bool TryGetDescendingTime(
@@ -98,7 +106,8 @@ public static class JumpTargetPlanner
         out JumpTarget target,
         WorldRect? workingArea = null,
         float? rightLandingMargin = null,
-        float? maxLaunchSpeed = null)
+        float? maxLaunchSpeed = null,
+        string? supportingSurfaceId = null)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         target = default;
@@ -119,7 +128,9 @@ public static class JumpTargetPlanner
         foreach (var candidate in candidates)
         {
             if (!candidate.IsValid || !candidate.IsVisible || candidate.IsMinimized || candidate.IsExcluded
-                || candidate.IsStale || candidate.IsOccluded || candidate.IsMaximized)
+                || candidate.IsStale || candidate.IsOccluded || candidate.IsMaximized
+                || (supportingSurfaceId is not null
+                    && string.Equals(candidate.Id, supportingSurfaceId, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             if (workingArea is { } visibleArea && candidate.Bounds.Top < visibleArea.Top) continue;
@@ -155,6 +166,30 @@ public static class JumpTargetPlanner
                 ? Math.Max(start.X, left + settle)
                 : Math.Min(start.X, right - settle);
             landingX = Math.Clamp(landingX, left, right);
+            // More charge also gives a distant landing interval more travel
+            // time. Never increase horizontal speed to force reachability.
+            var travelTime = Math.Abs(landingX - start.X) / horizontalSpeed;
+            if (time < travelTime)
+            {
+                if (!BallisticMotion.TryGetDescendingTime(start.Y, candidate.Bounds.Top,
+                        launchSpeedLimit, gravity, maxFallSpeed, out var maximumTime)
+                    || maximumTime < travelTime)
+                    continue;
+
+                var low = requiredSpeed;
+                var high = launchSpeedLimit;
+                for (var iteration = 0; iteration < 24; iteration++)
+                {
+                    var middle = (low + high) / 2f;
+                    BallisticMotion.TryGetDescendingTime(start.Y, candidate.Bounds.Top,
+                        middle, gravity, maxFallSpeed, out var middleTime);
+                    if (middleTime < travelTime) low = middle;
+                    else high = middle;
+                }
+                requiredSpeed = high;
+                BallisticMotion.TryGetDescendingTime(start.Y, candidate.Bounds.Top,
+                    requiredSpeed, gravity, maxFallSpeed, out time);
+            }
             var velocity = (landingX - start.X) / time;
             if (!float.IsFinite(velocity) || Math.Abs(velocity) > horizontalSpeed + 0.001f)
                 continue;

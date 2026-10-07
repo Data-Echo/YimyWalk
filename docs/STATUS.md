@@ -328,6 +328,17 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 - 角色页最终采用稳定角色 ID 的 `ListView` 列表（名称、ID、有效状态、默认标记）与右侧 idle1 详情，而不是下拉选择；查看行不会改变创建默认，只有“设为默认角色”按钮会调用 `AppHost.SetSelectedRole`。
 - 角色列表和桌宠实例列表同时存在于缓存页面时，smoke 按当前可见列表选择，避免测试工具把两类列表混淆；本轮 DesktopInputSmoke 已重新通过。
 - 全局和应用级布尔项的 AntdUI Switch 旁显示“开启/关闭”文字状态，且状态标签由控件事件同步；这保证状态不只依赖颜色或滑块位置。
+# 2026-10-07 窗口蓄力跳跃修正（当前交接）
+
+## 100% 窗口跳跃低跳问题（2026-10-07）
+
+**根因**：`WindowJumpDesire=100%` 只保证进入窗口目标判定，不保证任意高度都能被选择。上一版把窗口轨迹和普通蓄力跳共用 `1.75x` 垂直速度上限；默认 `JumpSpeed=450、Gravity=1500` 时最高上升约 `206.7px`。底部到常见窗口顶部的高度差超过该值时，`JumpTargetPlanner` 正确判定不可达，代码按既有回退规则执行一次普通低跳，所以用户看到的是原地低跳而不是蓄力轨迹。
+
+**修正**：普通关注跳仍保持 `1.75x` 上限；窗口目标使用文档化的、有限的 `6x` 目标专用上限，并继续受真实水平距离、下降交会时间、缩放后帧边距和落脚区间约束。窗口目标蓄力仍播放第七帧并冻结位置，起跳后按统一弹道积分平滑飞行；在窗口上再次尝试时排除当前支撑窗口，避免 100% 欲望反复跳回原窗口。弹道预测和 Tick 积分现使用同一加速度/终端速度分段公式。
+
+**可重复验证**：Core `148/148` 通过，覆盖 1080/1740 像素屏幕高度、16/33/100ms Tick、窗口专用速度上限、水平速度上限、当前支撑面排除、目标失效后继续普通物理和旧有物理回归。
+
+**桌面验证边界**：本次尚未在真实桌面上重新观察“100% 窗口欲望从底部蓄力跃迁到任意真实窗口顶部”的视觉路径；以下旧有托盘、拖拽、状态刷新、资源释放和显示器 smoke 仍作为回归依据，不能替代该项人工观察。新的发布包为 `artifacts/publish/charged-window-jump-fix`，版本 `0.1.11`；`scripts/test-release-package.ps1` 通过，11 个文件/10 条 SHA-256 清单，角色清单只有 `slime`。
 # 2026-10-07 主动运动与预览（实施中）
 
 用户已确认总体方案和七项补充规则；当前任务为 M4 改进。详见 `superpowers/specs/2026-10-07-yimywalk-autonomous-movement-design.md` 的最终补充规则和 `superpowers/plans/2026-10-07-autonomous-movement.md`。全局欲望位于互动页，实例覆盖位于桌宠页；窗口跳跃受真实弹道/限速约束，顶部释放保留窗口落脚；cat 清理仅限内置包和新发布产物。Core/UI 实现及可重复验证已完成；主动跳跃、侧边攀爬、顶部行走等新增桌面路径仍按下文标记为未验证。
@@ -364,7 +375,7 @@ The repository sample and release output contain only `slime`; the `cat` test fi
 
 The approved charged-jump correction is implemented in Core. Ordinary autonomous jump attempts now make one mode decision after the existing retry gate: they either launch immediately at the role's base jump speed or enter `JumpCharge` for a sampled `0.15–0.45 s` interval. While charging, the pet remains stationary, retains its horizontal velocity, and renders the seventh (`FrameKind.Apex`) frame. The sampled duration maps to a finite launch speed capped at `1.75x` the role's base jump speed. A zero ordinary jump desire prevents new charges and jumps without interrupting an active charge or airborne motion. Pause remains a session-level freeze and drag cancels the charge through the existing priority path.
 
-Window-jump planning now evaluates the descending intersection, scaled-frame landing margins, horizontal distance, and the bounded launch-speed range. A reachable candidate above the base apex enters a planned charge with the required launch speed, up to the same `1.75x` cap; horizontal speed remains bounded by the existing walking-speed cap. The arc is integrated by the existing Core physics path. Candidate movement or disappearance does not snap, attach, or replan the active pet; normal surface selection continues to decide any later landing.
+Window-jump planning now evaluates the descending intersection, scaled-frame landing margins, horizontal distance, and the bounded launch-speed range. A reachable candidate above the base apex enters a planned charge with the required launch speed, up to the explicit `6x` window-only cap; ordinary jumps remain capped at `1.75x`, and horizontal speed remains bounded by the existing walking-speed cap. The arc is integrated by the existing Core physics path. Candidate movement or disappearance does not snap, attach, or replan the active pet; normal surface selection continues to decide any later landing.
 
 Repeatable verification:
 

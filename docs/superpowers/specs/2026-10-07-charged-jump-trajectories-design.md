@@ -1,4 +1,4 @@
-﻿# YimyWalk charged jumps and reachable window trajectories
+# YimyWalk charged jumps and reachable window trajectories
 
 Date: 2026-10-07
 
@@ -15,9 +15,9 @@ Each eligible autonomous jump attempt consumes its existing attempt timer once. 
 
 The charged/uncharged choice and duration are sampled once per attempt. A zero ordinary jump desire prevents starting either mode; it never interrupts a jump or charge already in progress. Existing activity-rate scaling, pause behavior, drag priority, Eat/airborne restrictions, and retry intervals remain unchanged.
 
-When window landing is enabled and the independent `WindowJumpDesire` branch selects a reachable candidate, the attempt uses a planned charged trajectory. The planner computes a descending intersection time, a valid landing X interval after scaled-frame margins, and a continuous ballistic path whose apex is high enough to clear the candidate top. Horizontal velocity is clamped to the existing walk-speed limit. The planned vertical launch speed is capped by the same 1.75x charge ceiling. If no candidate satisfies all constraints, the attempt falls back to the ordinary charged/uncharged choice. If a target moves, disappears, becomes invalid, or loses its landing interval during flight, the pet keeps integrating its current trajectory and does not snap or replan in place.
+When window landing is enabled and the independent `WindowJumpDesire` branch selects a reachable candidate, the attempt uses a planned charged trajectory. The planner computes a descending intersection time, a valid landing X interval after scaled-frame margins, and a continuous ballistic path whose apex is high enough to clear the candidate top. Horizontal velocity is clamped to the existing walk-speed limit. The planned vertical launch speed uses a separate finite `6x` role `JumpSpeed` ceiling. This target-only ceiling is explicit because the ordinary `1.75x` ceiling cannot clear a typical desktop-height difference; ordinary attention-seeking jumps keep the smaller cap. If no candidate satisfies all constraints, the attempt falls back to the ordinary charged/uncharged choice. The current supporting window is excluded so a 100% desire does not repeatedly select the surface already under the pet. If a target moves, disappears, becomes invalid, or loses its landing interval during flight, the pet keeps integrating its current trajectory and does not snap or replan in place.
 
-The renderer does not draw a visible parabola line. The phrase “draw a parabola” means the pet's physical position follows the continuously integrated arc, including the existing descending surface-selection logic.
+The renderer does not draw a visible parabola line. Prediction and Tick integration use the same closed-form acceleration and terminal-speed split, so the selected descending intersection matches the simulated path. The phrase “draw a parabola” means the pet's physical position follows the continuously integrated arc, including the existing descending surface-selection logic.
 
 ## State and data flow
 

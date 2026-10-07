@@ -93,7 +93,7 @@ public sealed class PetPhysicsTests
         engine.Tick(pet, 0.1);
 
         Assert.Equal(110, pet.FootPosition.X, 3);
-        Assert.Equal(35, pet.FootPosition.Y, 3);
+        Assert.Equal(27.5f, pet.FootPosition.Y, 3); // 20 + 0.5 * 1500 * 0.1^2
         Assert.Equal(1200, pet.Velocity.X, 3);
         Assert.Equal(PetState.Fall, pet.State);
     }
@@ -111,7 +111,7 @@ public sealed class PetPhysicsTests
         engine.Tick(pet, 0.1);
 
         Assert.Equal(390, pet.FootPosition.X, 3);
-        Assert.Equal(35, pet.FootPosition.Y, 3);
+        Assert.Equal(27.5f, pet.FootPosition.Y, 3);
         Assert.Equal(-1200, pet.Velocity.X, 3);
         Assert.Equal(PetState.Fall, pet.State);
     }
@@ -197,7 +197,7 @@ public sealed class PetPhysicsTests
         engine.Tick(pet, 0.1);
 
         Assert.Equal(150, surface.LastNextPosition.X, 3);
-        Assert.Equal(315, pet.FootPosition.Y, 3);
+        Assert.Equal(307.5f, pet.FootPosition.Y, 3); // 250 + 500 * 0.1 + 0.5 * 1500 * 0.1^2
         Assert.Equal(150, pet.FootPosition.X, 3);
         Assert.Equal(PetState.Fall, pet.State);
     }
@@ -213,7 +213,7 @@ public sealed class PetPhysicsTests
 
         Assert.Equal(PetState.Fall, pet.State);
         Assert.Equal(101, pet.FootPosition.X, 3);
-        Assert.Equal(315, pet.FootPosition.Y, 3);
+        Assert.Equal(307.5f, pet.FootPosition.Y, 3);
     }
 
     [Fact]
