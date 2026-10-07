@@ -11,7 +11,7 @@ public sealed class SettingsDocumentTests
         var settings = SettingsDocument.Defaults;
 
         Assert.Equal(1, settings.SchemaVersion);
-        Assert.Equal("cat", settings.SelectedRoleId);
+        Assert.Equal("slime", settings.SelectedRoleId);
         Assert.Equal(1f, settings.Scale);
         Assert.Equal(1f, settings.ActivityRate);
         Assert.True(settings.DefaultWalkEnabled);
@@ -75,5 +75,25 @@ public sealed class SettingsDocumentTests
         Assert.True(SettingsDocument.TryParse(json, out var roundTripped, out var error), error);
         Assert.Equal(original, roundTripped);
         Assert.Contains("\"selectedRoleId\": \"slime\"", Encoding.UTF8.GetString(json));
+    }
+
+    [Fact]
+    public void DesireSettingsRoundTripAndPreserveValidUserRole()
+    {
+        var json = Encoding.UTF8.GetBytes("{\"selectedRoleId\":\"custom-cat\",\"jumpDesire\":0.4,\"climbDesire\":0}");
+        Assert.True(SettingsDocument.TryParse(json, out var value, out var error), error);
+        Assert.Equal("custom-cat", value.SelectedRoleId);
+        var saved = Encoding.UTF8.GetString(SettingsDocument.Serialize(value));
+        Assert.Contains("\"jumpDesire\": 0.4", saved);
+        Assert.Contains("\"climbDesire\": 0", saved);
+    }
+
+    [Fact]
+    public void OldSettingsAcquireDesireDefaults()
+    {
+        Assert.True(SettingsDocument.TryParse("{}"u8, out var value, out _));
+        var saved = Encoding.UTF8.GetString(SettingsDocument.Serialize(value));
+        Assert.Contains("\"jumpDesire\": 0.2", saved);
+        Assert.Contains("\"climbDesire\": 0.12", saved);
     }
 }

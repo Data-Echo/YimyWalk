@@ -328,3 +328,6 @@ Status distinctions: Task 5 code is implemented, the publish build passes, Core 
 - 角色页最终采用稳定角色 ID 的 `ListView` 列表（名称、ID、有效状态、默认标记）与右侧 idle1 详情，而不是下拉选择；查看行不会改变创建默认，只有“设为默认角色”按钮会调用 `AppHost.SetSelectedRole`。
 - 角色列表和桌宠实例列表同时存在于缓存页面时，smoke 按当前可见列表选择，避免测试工具把两类列表混淆；本轮 DesktopInputSmoke 已重新通过。
 - 全局和应用级布尔项的 AntdUI Switch 旁显示“开启/关闭”文字状态，且状态标签由控件事件同步；这保证状态不只依赖颜色或滑块位置。
+# 2026-10-07 主动运动与预览（实施中）
+
+用户已确认总体方案和七项补充规则；当前任务为 M4 改进。详见 `superpowers/specs/2026-10-07-yimywalk-autonomous-movement-design.md` 的最终补充规则和 `superpowers/plans/2026-10-07-autonomous-movement.md`。全局欲望位于互动页，实例覆盖位于桌宠页；窗口跳跃受真实弹道/限速约束，顶部释放保留窗口落脚；cat 清理仅限内置包和新发布产物。当前仅方案确认，新增运动与 UI 尚未测试通过，Windows 桌面行为未验证。
