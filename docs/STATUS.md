@@ -395,3 +395,5 @@ The new charged ordinary-jump and high visible-window trajectory paths have not 
 **验证**：`ManagerUiSmoke --baseline` 通过，新增断言确认 BrandLogo 有嵌入图像且完整位于 Footer（当前 Windows 会话 DPI 120）；`ManagerUiSmoke` 完整回归通过；`--preview-pixels` 通过；Core `148/148` 测试通过；App x64 Release 构建 0 警告/0 错误。截图 `artifacts/ui-smoke/antd-overview.png` 可见左下角 Logo。
 
 **桌面验证边界**：已在当前 125% DPI 会话完成管理器布局和渲染 smoke。100/150/200% DPI、最小尺寸/最大化还原及真实桌面视觉验收仍未逐项实测；预览与 smoke 不替代这些人工验收。根目录临时上传文件 `logo.png` 未纳入提交，避免重复资源。
+
+**后续 UI 修正（2026-10-09）**：按用户要求删除 Logo 上方的“点击托盘图标打开主菜单”提示文字，Footer 高度同步收紧，Logo 仍保持完整可见。`ManagerUiSmoke --baseline` 与完整 smoke 已确认提示不存在且 Logo 仍在 Footer 内。

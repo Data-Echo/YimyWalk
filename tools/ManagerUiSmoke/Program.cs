@@ -390,6 +390,8 @@ internal static class Program
 
     static void AssertBrandLogo()
     {
+        Require(FindText(manager, "点击托盘图标打开主菜单") is null,
+            "sidebar footer no longer shows the tray instruction");
         var logo = Descendants(manager).SingleOrDefault(control => control.Name == "BrandLogo");
         Require(logo is PictureBox picture && picture.Image is not null,
             "sidebar brand logo has an embedded image");

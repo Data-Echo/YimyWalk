@@ -81,7 +81,7 @@ internal sealed class ManagerForm : Form
         };
         sidebarLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(228)));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(184)));
         sidebar.Controls.Add(sidebarLayout);
 
         using (var stream = typeof(ManagerForm).Assembly.GetManifestResourceStream("YimyWalk.App.Resources.logo.png")
@@ -99,16 +99,6 @@ internal sealed class ManagerForm : Form
 
         var footer = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
         sidebarLayout.Controls.Add(footer, 0, 1);
-        var explanation = new Label
-        {
-            Text = "点击托盘图标打开主菜单",
-            AutoSize = false,
-            Dock = DockStyle.Top,
-            Height = 44,
-            Font = UiTheme.SmallFont,
-            ForeColor = UiTheme.Ink
-        };
-        footer.Controls.Add(explanation);
         footer.Controls.Add(_brandLogo);
 
         var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Cream, Padding = Padding.Empty, Margin = Padding.Empty };

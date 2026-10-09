@@ -5,6 +5,7 @@
 - Added the supplied YimyWalk logo to the lower-left of the manager sidebar.
 - The transparent PNG is embedded in the application, rendered with proportional `Zoom` scaling, and disposed with the manager form.
 - Added a ManagerUiSmoke regression check for the embedded image and its visible footer bounds.
+- Removed the tray instruction text from the footer while keeping the logo anchored at the lower-left.
 
 ## YimyWalk v0.1.11
 
