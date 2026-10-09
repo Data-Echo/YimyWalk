@@ -13,6 +13,16 @@ internal sealed class ManagerForm : Form
     private readonly Panel _pageHost = new() { Dock = DockStyle.Fill, BackColor = UiTheme.Cream };
     private readonly Dictionary<ManagerPageId, ManagerPage> _pages = new();
     private readonly Dictionary<ManagerPageId, AntdUI.Button> _navigation = new();
+    private readonly PictureBox _brandLogo = new()
+    {
+        Name = "BrandLogo",
+        AccessibleName = "YimyWalk 标志",
+        Height = 176,
+        Dock = DockStyle.Bottom,
+        SizeMode = PictureBoxSizeMode.Zoom,
+        BackColor = Color.Transparent,
+        TabStop = false
+    };
     private ManagerPageId _selectedPage;
     private bool _allowClose;
     private bool _refreshing;
@@ -71,19 +81,13 @@ internal sealed class ManagerForm : Form
         };
         sidebarLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(82)));
+        sidebarLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LogicalToDeviceUnits(228)));
         sidebar.Controls.Add(sidebarLayout);
 
-        var brand = new Label
-        {
-            Text = "YimyWalk",
-            Height = 42,
-            Font = UiTheme.BrandFont,
-            ForeColor = UiTheme.Ink,
-            TextAlign = ContentAlignment.MiddleLeft,
-            TabStop = false,
-            Dock = DockStyle.Bottom
-        };
+        using (var stream = typeof(ManagerForm).Assembly.GetManifestResourceStream("YimyWalk.App.Resources.logo.png")
+            ?? throw new InvalidOperationException("Application logo resource is missing."))
+        using (var source = Image.FromStream(stream))
+            _brandLogo.Image = new Bitmap(source);
 
         var nav = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, UiTheme.Space8, 0, 0) };
         sidebarLayout.Controls.Add(nav, 0, 0);
@@ -105,7 +109,7 @@ internal sealed class ManagerForm : Form
             ForeColor = UiTheme.Ink
         };
         footer.Controls.Add(explanation);
-        footer.Controls.Add(brand);
+        footer.Controls.Add(_brandLogo);
 
         var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Cream, Padding = Padding.Empty, Margin = Padding.Empty };
         root.Controls.Add(content, 1, 0);
@@ -237,6 +241,9 @@ internal sealed class ManagerForm : Form
             _refreshTimer.Dispose();
             foreach (var page in _pages.Values) page.Dispose();
             _pages.Clear();
+            var logoImage = _brandLogo.Image;
+            _brandLogo.Image = null;
+            logoImage?.Dispose();
             Icon?.Dispose();
         }
         base.Dispose(disposing);

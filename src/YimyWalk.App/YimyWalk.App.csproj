@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="AntdUI" Version="2.4.12" />
     <EmbeddedResource Include="Resources\yimywalk.ico" LogicalName="YimyWalk.App.Resources.yimywalk.ico" />
+    <EmbeddedResource Include="Resources\logo.png" LogicalName="YimyWalk.App.Resources.logo.png" />
     <ProjectReference Include="..\YimyWalk.Core\YimyWalk.Core.csproj" />
     <InternalsVisibleTo Include="DesktopDisplaySmoke" />
     <InternalsVisibleTo Include="ManagerUiSmoke" />

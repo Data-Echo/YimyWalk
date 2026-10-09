@@ -1,5 +1,11 @@
 # Unreleased
 
+## UI Logo
+
+- Added the supplied YimyWalk logo to the lower-left of the manager sidebar.
+- The transparent PNG is embedded in the application, rendered with proportional `Zoom` scaling, and disposed with the manager form.
+- Added a ManagerUiSmoke regression check for the embedded image and its visible footer bounds.
+
 ## YimyWalk v0.1.11
 
 - Fixed 100% visible-window jump attempts falling back to a low ordinary jump when the target was above the previous 1.75x ceiling.

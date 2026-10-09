@@ -387,3 +387,11 @@ Repeatable verification:
 
 The new charged ordinary-jump and high visible-window trajectory paths have not been visually observed in a live desktop session yet. The latest display smoke confirms the existing manual upward jump path and rendering, but it is not evidence of autonomous charge timing or high-window landing. Physical display disconnect/reconnect, sleep/resume, and taskbar-topology cases remain unverified as recorded above.
 - `scripts/build-yimywalk.ps1 -Version 0.1.10 -PublishPath artifacts/publish/charged-jump-trajectories` and `scripts/test-release-package.ps1`: **PACKAGE PASS**, version `0.1.10`, 11 files/10 checksums; manifest contains only `slime`. The shipped optimized slime sprite SHA-256 remains `BC92811F4B7149AE948A07A16E1A72662E175EC6DCB5BBC398B4138993527AF1`.
+
+## 2026-10-09 UI Logo
+
+**代码与资源**：将用户提供的透明 Logo 复制到 `src/YimyWalk.App/Resources/logo.png`，作为 `YimyWalk.App.Resources.logo.png` 嵌入资源。管理器左下角 Footer 使用 `PictureBox` 的 `Zoom` 等比缩放显示，保留透明背景，并在窗体释放时释放 Bitmap。来源文件和嵌入副本 SHA-256 均为 `E3F8A5C0CC3936C3DDC828C93523A5CE7D00DA7ECE1D2146F0ABEA526BFA1197`。
+
+**验证**：`ManagerUiSmoke --baseline` 通过，新增断言确认 BrandLogo 有嵌入图像且完整位于 Footer（当前 Windows 会话 DPI 120）；`ManagerUiSmoke` 完整回归通过；`--preview-pixels` 通过；Core `148/148` 测试通过；App x64 Release 构建 0 警告/0 错误。截图 `artifacts/ui-smoke/antd-overview.png` 可见左下角 Logo。
+
+**桌面验证边界**：已在当前 125% DPI 会话完成管理器布局和渲染 smoke。100/150/200% DPI、最小尺寸/最大化还原及真实桌面视觉验收仍未逐项实测；预览与 smoke 不替代这些人工验收。根目录临时上传文件 `logo.png` 未纳入提交，避免重复资源。

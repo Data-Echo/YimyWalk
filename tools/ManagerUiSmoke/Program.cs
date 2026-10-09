@@ -38,6 +38,7 @@ internal static class Program
             Pump(100);
             if (args.Contains("--baseline"))
             {
+                AssertBrandLogo();
                 foreach (var baselinePage in new[] { "Overview", "Pets", "Characters", "Interactions", "Settings" })
                 {
                     Page(baselinePage);
@@ -385,6 +386,16 @@ internal static class Program
             var preview = Descendants(page).FirstOrDefault(control => control.GetType().Name == "CharacterFramePreview");
             Require(preview is not null && preview.Width >= 220 && preview.Height >= 220, "character preview has usable size");
         }
+    }
+
+    static void AssertBrandLogo()
+    {
+        var logo = Descendants(manager).SingleOrDefault(control => control.Name == "BrandLogo");
+        Require(logo is PictureBox picture && picture.Image is not null,
+            "sidebar brand logo has an embedded image");
+        Require(logo!.Visible && logo.Parent is not null && logo.Parent.ClientRectangle.Contains(logo.Bounds),
+            "sidebar brand logo is fully inside its visible footer");
+        Console.WriteLine($"BRAND_LOGO image=PASS bounds={logo.Bounds} parent={logo.Parent!.ClientSize}");
     }
     static Control VisiblePage()
     {
