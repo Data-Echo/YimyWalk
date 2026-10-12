@@ -6,7 +6,7 @@
 
 **工程说明**：更新 `AGENTS.md`、README、第三方声明、测试入口和环境检查；忽略上游目录、本地 `.superpowers/`、重复根目录 `logo.png` 和 `.vs/`。本地未跟踪的 `.superpowers/` 与 `logo.png` 保留。旧上游文件可从历史提交恢复，后续审计在仓库外临时获取固定提交。
 
-**验证与同步**：清理后的 staged 源码导出不含 `vendor/`、`.tools/` 或构建产物；`scripts/verify-environment.ps1` 通过。使用导出源码执行 `scripts/build-yimywalk.ps1 -Version 0.1.13`，Core 测试 **148/148** 通过，x64 self-contained 发布完成；`scripts/test-release-package.ps1` 返回 `PACKAGE PASS VERSION=0.1.13 FILES=11 CHECKSUMS=10`。restore/build 报告现有 ImageSharp 3.1.12 的 NU1902/NU1903 安全审计警告，本次清理没有改变该依赖。用普通提交同步 `origin/codex/bootstrap`，不重写历史或修改发布标签。
+**验证与同步**：清理后的 staged 源码导出不含 `vendor/`、`.tools/` 或构建产物；`scripts/verify-environment.ps1` 通过。使用导出源码执行 `scripts/build-yimywalk.ps1 -Version 0.1.13`，Core 测试 **148/148** 通过，x64 self-contained 发布完成；`scripts/test-release-package.ps1` 返回 `PACKAGE PASS VERSION=0.1.13 FILES=11 CHECKSUMS=10`。restore/build 报告现有 ImageSharp 3.1.12 的 NU1902/NU1903 安全审计警告，本次清理没有改变该依赖。随后重写 `codex/bootstrap` 的路径历史，当前可达历史中的 eSheep 路径对象为 0；已有发布标签不修改。
 
 **桌面边界**：本次只调整仓库内容与工程入口，没有新增产品桌面行为；不重新宣称历史未验证项通过。
 
