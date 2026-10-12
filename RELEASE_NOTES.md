@@ -1,5 +1,9 @@
 # Unreleased
 
+## Manager heading spacing
+
+- Fixed page headings so the large title and subtitle use the title's measured font height instead of a fixed vertical offset. This prevents the subtitle from overlapping the title at the normal 120 DPI layout.
+
 ## Starter roles
 
 - Bundle the supplied color and line-art Yimy sprite sheets as `Characters/咿米_Yimy/sprite.png` and `Characters/咿米_Line/sprite.png` alongside `slime`.

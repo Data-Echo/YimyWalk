@@ -1,5 +1,13 @@
 > **最新交接优先**：当前仓库结构以本页 2026-10-12 清理记录为准；产品行为以对应日期的最后交接为准。旧任务栏、上游目录和构建脚本描述是历史记录。
 
+# 2026-10-13 管理界面标题间距修正
+
+**根因**：`ManagerPage.AddHeading` 将所有副标题固定放在 `Y=42`，而 120 DPI 下 22pt 粗体标题的实际高度为 50px，导致首页 `YimyWalk` 标题与副标题重叠 8px。原有 `ManagerUiSmoke` 为标题面板设置了跳过条件，因此没有捕获标题面板内部的标签重叠。
+
+**修正**：标题面板现在读取标题的首选高度，将副标题放在标题底部额外 8px 处，并根据副标题高度更新面板最小高度。`ManagerUiSmoke` 移除标题面板跳过条件，新增回归约束，避免同一标题面板内的标签再次重叠。
+
+**验证**：修正前 smoke 按预期失败：`Overview sibling labels do not overlap: YimyWalk / 桌宠继续在桌面运行，主菜单负责管理当前状态和设置。`；修正后 `ManagerUiSmoke --baseline`、完整 ManagerUiSmoke 和 `--preview-pixels` 均通过。当前 120 DPI 截图确认首页标题与副标题分离；其他 DPI 的完整人工桌面矩阵仍未执行。
+
 # 2026-10-13 咿米初始角色入包
 
 **资源**：按用户要求将 `Yimy.jpg` 原样复制为 `Characters/咿米_Yimy/sprite.png`，将 `Yimy_no.jpg` 原样复制为 `Characters/咿米_Line/sprite.png`。两张源文件实际为带 Alpha 的 1254×1254 PNG，符合 3×3 格式，单格 418×418；角色 ID 与显示名使用用户指定的目录名，运动和对白使用现有默认值。现有 `slime` 保留，发布脚本复制完整 `Characters/` 并生成三角色清单。

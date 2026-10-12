@@ -342,7 +342,6 @@ internal static class Program
         }
         foreach (var siblings in Descendants(page).Where(control => control.Visible && control is Label).GroupBy(control => control.Parent))
         {
-            if (siblings.Key is Panel heading && heading.Height <= 80) continue;
             var labels = siblings.Cast<Label>().ToArray();
             for (var i = 0; i < labels.Length; i++)
             for (var j = i + 1; j < labels.Length; j++)

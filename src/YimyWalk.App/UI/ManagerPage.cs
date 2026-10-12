@@ -55,23 +55,29 @@ internal abstract class ManagerPage : UserControl
             Margin = new Padding(0, 0, 0, UiTheme.Space24),
             MinimumSize = new Size(0, 76)
         };
-        heading.Controls.Add(new Label
+        var titleLabel = new Label
         {
             Text = title,
             AutoSize = true,
             Font = UiTheme.TitleFont,
             ForeColor = UiTheme.Ink,
             Location = new Point(0, 0)
-        });
-        heading.Controls.Add(new Label
+        };
+        var subtitleLabel = new Label
         {
             Text = subtitle,
             AutoSize = true,
             MaximumSize = new Size(760, 0),
             Font = UiTheme.BodyFont,
             ForeColor = UiTheme.Muted,
-            Location = new Point(2, 42)
-        });
+            Location = new Point(2, 0)
+        };
+        var titleHeight = titleLabel.GetPreferredSize(Size.Empty).Height;
+        subtitleLabel.Location = new Point(2, titleHeight + UiTheme.Space8);
+        var subtitleHeight = subtitleLabel.GetPreferredSize(new Size(760, 0)).Height;
+        heading.MinimumSize = new Size(0, Math.Max(76, subtitleLabel.Top + subtitleHeight + UiTheme.Space8));
+        heading.Controls.Add(subtitleLabel);
+        heading.Controls.Add(titleLabel);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(heading, 0, layout.RowCount++);
         return heading;
