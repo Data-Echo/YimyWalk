@@ -42,14 +42,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-yimywalk.ps1
 
 ## 上游基线
 
-原版 eSheep 测试仍使用：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x64
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-upstream-tests.ps1 -Platform x86
-```
-
-这些测试属于 M0 上游证据，不会替代 YimyWalk 的桌面验收。
+M0 的 eSheep 审计记录保存在 [`docs/UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md)。完整上游源码、素材和原版测试脚本不属于 YimyWalk 源码树；需要复核时，应在仓库外临时获取审计中固定的提交。上游结果只用于复用性判断，不能替代 YimyWalk 的核心测试或 Windows 桌面验收。
 
 `desktop-smoke.ps1` output also includes `MANAGED` heap and `FINAL` host-Dispose metrics to distinguish active-window cleanup from process allocator retention; these trends are baseline evidence and not a promise of long-term smoothness at 100 instances. The current single-display landing run also verifies the manager-controlled opt-in path indirectly through the host property; the input smoke directly toggles the manager checkbox and verifies close/reopen.
 

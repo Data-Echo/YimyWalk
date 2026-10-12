@@ -1,4 +1,14 @@
-> **最新交接优先**：文档前段的旧任务栏启动/关闭描述是历史记录；当前实现与验收以文末 M4.1 UI/托盘修复交接为准。
+> **最新交接优先**：当前仓库结构以本页 2026-10-12 清理记录为准；产品行为以对应日期的最后交接为准。旧任务栏、上游目录和构建脚本描述是历史记录。
+
+# 2026-10-12 GitHub 仓库清理
+
+**范围**：远端默认分支为 `codex/bootstrap`。完整 `vendor/esheep/` 包含 1,130 个文件，共 12,531,708 字节，当前产品源码和解决方案不依赖它。移除快照、4 个上游专用脚本、只为上游设置的 `.gitattributes` 和根目录重复需求文件。保留产品测试、开发工具、角色模板、已确认的设计规则、许可证和审计摘要。
+
+**工程说明**：更新 `AGENTS.md`、README、第三方声明、测试入口和环境检查；忽略上游目录、本地 `.superpowers/`、重复根目录 `logo.png` 和 `.vs/`。本地未跟踪的 `.superpowers/` 与 `logo.png` 保留。旧上游文件可从历史提交恢复，后续审计在仓库外临时获取固定提交。
+
+**验证与同步**：清理后的 staged 源码导出不含 `vendor/`、`.tools/` 或构建产物；`scripts/verify-environment.ps1` 通过。使用导出源码执行 `scripts/build-yimywalk.ps1 -Version 0.1.13`，Core 测试 **148/148** 通过，x64 self-contained 发布完成；`scripts/test-release-package.ps1` 返回 `PACKAGE PASS VERSION=0.1.13 FILES=11 CHECKSUMS=10`。restore/build 报告现有 ImageSharp 3.1.12 的 NU1902/NU1903 安全审计警告，本次清理没有改变该依赖。用普通提交同步 `origin/codex/bootstrap`，不重写历史或修改发布标签。
+
+**桌面边界**：本次只调整仓库内容与工程入口，没有新增产品桌面行为；不重新宣称历史未验证项通过。
 
 # 当前状态（2026-10-07，桌宠详情实例大小可见性修复）
 

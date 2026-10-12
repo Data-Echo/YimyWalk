@@ -1,4 +1,8 @@
 .tools/
+/vendor/esheep/
+/.superpowers/
+/logo.png
+.vs/
 artifacts/
 build/
 TestResults/

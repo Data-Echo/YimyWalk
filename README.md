@@ -69,6 +69,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-character.p
 
 开发环境需要 Windows x64 和 .NET 8 SDK。仓库提供可复现的 PowerShell 入口：
 
+缺少 SDK 时，可显式运行 `scripts/bootstrap-dotnet.ps1` 在 `.tools/dotnet/` 安装本地开发 SDK。eSheep 仅作为外部审计参考，YimyWalk 的构建和测试不依赖它；来源及固定提交见 [`docs/UPSTREAM_AUDIT.md`](docs/UPSTREAM_AUDIT.md)。本地 SDK、构建产物和临时文件均不提交到仓库。
+
 ```powershell
 # 恢复依赖、运行测试并生成 Windows x64 self-contained 发布包
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-yimywalk.ps1 `

@@ -6,11 +6,11 @@
 - Snapshot: `e2933305157a34818f47d238c74607593d81816d`
 - Fetched: 2026-10-04
 - License stated by upstream README: MIT License.
-- Snapshot location: `vendor/esheep/`.
+- No upstream snapshot is checked into this repository.
 
-The upstream repository contains code, NuGet references, and many pet images/audio assets. The MIT notice applies to the upstream project as stated; individual bundled assets may have separate attribution or provenance. YimyWalk does not assume every bundled pet is redistributable. Any asset copied into a release must be audited separately and retain its attribution.
+The upstream repository contains code, NuGet references, and many pet images/audio assets. The MIT notice applies to the upstream project as stated; individual bundled assets may have separate attribution or provenance. YimyWalk does not assume every bundled pet is redistributable. No upstream snapshot or upstream bundled asset is included in a YimyWalk release. Any future asset must be audited separately and retain its attribution.
 
-The upstream README credits NAudio and several sprite authors. We keep the snapshot for audit and do not yet include its character media in a YimyWalk release.
+The upstream README credits NAudio and several sprite authors. The historical audit record is in [`docs/UPSTREAM_AUDIT.md`](docs/UPSTREAM_AUDIT.md); the source is obtained only in an external temporary checkout when a new audit is needed.
 
 ## SixLabors.ImageSharp 3.1.12
 
@@ -22,8 +22,8 @@ The upstream README credits NAudio and several sprite authors. We keep the snaps
 
 ## YimyWalk sample roles
 
-- `Characters/cat/sprite.png` and `Characters/slime/sprite.png` are the YimyWalk sample role assets included in this repository.
-- They are not copied from the `vendor/esheep/` snapshot. The upstream snapshot's bundled media is not included in the release.
+- `Characters/slime/sprite.png` is the role shipped in the release. `tests/Fixtures/Characters/cat/sprite.png` is retained only for multi-role regression tests.
+- They are project sample assets and are not copied from the upstream snapshot.
 
 ## AntdUI 2.4.12
 
