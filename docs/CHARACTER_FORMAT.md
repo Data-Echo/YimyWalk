@@ -64,14 +64,14 @@ Characters/<id>/
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-character.ps1 `
-  -Path .\Characters\cat `
-  -PreviewPath .\artifacts\cat-preview.png `
+  -Path .\Characters\slime `
+  -PreviewPath .\artifacts\slime-preview.png `
   -ReferencePath .\docs\assets\character-grid-reference.png
 ```
 
 成功返回 0，并报告尺寸、单格尺寸、Alpha、九帧映射、配置来源、对白来源、缩放和锚点。角色无效返回 1 并保留上一条可读错误；参数或工具使用错误返回 2。输入目录可以包含空格和中文。预览是由九个已解码帧重新组合的 PNG，参考图只包含 3×3 网格和默认锚点示意；两者都不写回 `sprite.png`。校验失败时不会创建或替换预览输出，若目标已有文件则保持原样并打印提示。
 
-仓库中的 `Characters/cat` 和 `Characters/slime` 是两套可直接使用的 sprite-only 角色。`examples/character-template` 提供带配置和对白的作者模板；`docs/assets/character-grid-reference.png` 是不应放进运行时 sprite 的参考图。
+仓库中的 `Characters/slime`、`Characters/咿米_Yimy` 和 `Characters/咿米_Line` 是随发布包提供的 sprite-only 初始角色。后两者分别来自用户提供的 `Yimy.jpg` 和 `Yimy_no.jpg`，文件实际为透明 PNG，原样保存为 `sprite.png`，整图 1254×1254、单格 418×418。`cat` 仅保留在 `tests/Fixtures/Characters/cat` 供测试使用。`examples/character-template` 提供带配置和对白的作者模板；`docs/assets/character-grid-reference.png` 是不应放进运行时 sprite 的参考图。
 
 预览示例：
 

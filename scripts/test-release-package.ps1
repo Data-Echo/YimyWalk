@@ -1,11 +1,11 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([Parameter(Mandatory = $true)][string]$Path, [string]$Version = '0.1.5')
 $ErrorActionPreference = 'Stop'
 $package = (Resolve-Path -LiteralPath $Path).Path
-$manifest = Get-Content -LiteralPath (Join-Path $package 'PACKAGE_MANIFEST.json') -Raw | ConvertFrom-Json
+$manifest = Get-Content -LiteralPath (Join-Path $package 'PACKAGE_MANIFEST.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($manifest.version -ne $Version) { throw "Package version must be $Version." }
 foreach ($file in @('YimyWalk.exe', 'Start-YimyWalk.ps1', 'run-yimywalk.ps1',
-    'Characters/slime/sprite.png', 'THIRD_PARTY_NOTICES.md',
+    'Characters/slime/sprite.png', 'Characters/咿米_Yimy/sprite.png', 'Characters/咿米_Line/sprite.png', 'THIRD_PARTY_NOTICES.md',
     'licenses/ImageSharp-LICENSE.txt', 'licenses/Apache-2.0.txt', 'RELEASE_NOTES.md', 'PACKAGE_README.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path $package $file) -PathType Leaf)) { throw "Missing: $file" }
 }
@@ -23,7 +23,7 @@ foreach ($file in $files) {
     }
 }
 $listed = @{}
-foreach ($line in Get-Content -LiteralPath (Join-Path $package 'PACKAGE_CHECKSUMS.txt')) {
+foreach ($line in Get-Content -LiteralPath (Join-Path $package 'PACKAGE_CHECKSUMS.txt') -Encoding UTF8) {
     if ($line -notmatch '^([0-9A-F]{64})  (.+)$') { throw "Invalid checksum line: $line" }
     $expected = $Matches[1]
     $relative = $Matches[2]

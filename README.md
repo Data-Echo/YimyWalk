@@ -6,7 +6,7 @@ YimyWalk 是一个面向 Windows x64 的离线桌面 2D 宠物引擎。它采用
 
 ## 主要功能
 
-- 内置 `slime` 角色，发布包默认只带史莱姆；角色资源与引擎逻辑分离。
+- 内置 `slime`、`咿米_Yimy` 和 `咿米_Line` 三个初始角色；角色资源与引擎逻辑分离。
 - 支持 Idle、Walk、Jump、Fall、Dragged 等基础状态，以及随机蓄力的主动跳跃。
 - 支持跳到可见窗口顶部、屏幕边缘攀爬、顶部行走和普通下落。
 - 支持拖拽、抛掷、窗口顶部落脚、饥饿、虚拟食物、对白气泡和可选的前台应用反馈。
@@ -24,6 +24,10 @@ YimyWalk 是一个面向 Windows x64 的离线桌面 2D 宠物引擎。它采用
 YimyWalk.exe
 Characters/
   slime/
+    sprite.png
+  咿米_Yimy/
+    sprite.png
+  咿米_Line/
     sprite.png
 ```
 
@@ -120,7 +124,7 @@ YimyWalk 是非盈利项目，允许个人免费使用、下载、学习、修�
 
 - 目标平台是 Windows x64；其他平台没有发行承诺。
 - 角色目录不会执行脚本、DLL、Shell 命令或远程资源。
-- 当前发布包默认只包含 `slime`；测试所需的其他角色 fixture 不代表会随正式包发布。
+- 当前发布包包含 `slime`、`咿米_Yimy` 和 `咿米_Line`；测试所需的其他角色 fixture 不代表会随正式包发布。
 - 真实桌面上的主动跳跃、侧边攀爬、显示器物理拔插、睡眠恢复和所有 DPI 组合仍需按 [`docs/STATUS.md`](docs/STATUS.md) 中的验证记录理解。
 
 ## 文档

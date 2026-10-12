@@ -22,8 +22,9 @@ The upstream README credits NAudio and several sprite authors. The historical au
 
 ## YimyWalk sample roles
 
-- `Characters/slime/sprite.png` is the role shipped in the release. `tests/Fixtures/Characters/cat/sprite.png` is retained only for multi-role regression tests.
+- `Characters/slime/sprite.png`, `Characters/咿米_Yimy/sprite.png`, and `Characters/咿米_Line/sprite.png` are the roles shipped in the release. `tests/Fixtures/Characters/cat/sprite.png` is retained only for multi-role regression tests.
 - They are project sample assets and are not copied from the upstream snapshot.
+- The two Yimy sprites were supplied by the project owner on 2026-10-13 with an explicit request to bundle them as starter roles. Their source filenames were `Yimy.jpg` and `Yimy_no.jpg`, but both files contain transparent PNG data. They are copied byte-for-byte as `sprite.png`; no image conversion or generated artwork is involved.
 
 ## AntdUI 2.4.12
 

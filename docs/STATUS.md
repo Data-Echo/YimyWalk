@@ -1,5 +1,15 @@
 > **最新交接优先**：当前仓库结构以本页 2026-10-12 清理记录为准；产品行为以对应日期的最后交接为准。旧任务栏、上游目录和构建脚本描述是历史记录。
 
+# 2026-10-13 咿米初始角色入包
+
+**资源**：按用户要求将 `Yimy.jpg` 原样复制为 `Characters/咿米_Yimy/sprite.png`，将 `Yimy_no.jpg` 原样复制为 `Characters/咿米_Line/sprite.png`。两张源文件实际为带 Alpha 的 1254×1254 PNG，符合 3×3 格式，单格 418×418；角色 ID 与显示名使用用户指定的目录名，运动和对白使用现有默认值。现有 `slime` 保留，发布脚本复制完整 `Characters/` 并生成三角色清单。
+
+**来源与校验**：用户明确要求作为开箱即用的初始角色随包分发。Yimy SHA-256 为 `63CE5BF9750B0ADF796A0CBB05616A4731003C01CFC23819FFD0DB435B66CA23`；Line SHA-256 为 `EDB50E55FAD02497ADB73E9FE1509A30C9FA08EA1F7E756448B4A00644EA894E`；目标文件与源文件哈希一致。根目录源文件保留在本地并忽略，Git 只提交角色目录内副本。
+
+**验证**：`CharacterValidator` 已分别加载两个新角色，报告 1254×1254、418×418 单格、RGBA、9 帧且使用默认配置。`scripts/build-yimywalk.ps1 -Version 0.1.13 -PublishPath artifacts/publish/starter-yimy-20261013` 完成 restore、Core **148/148** 测试和 x64 self-contained 发布；`scripts/test-release-package.ps1` 修正为 UTF-8 路径读取后通过，结果为 `PACKAGE PASS VERSION=0.1.13 FILES=13 CHECKSUMS=12`，manifest 角色为 `slime`、`咿米_Line`、`咿米_Yimy`。三角色发布副本均通过运行时校验，哈希与源码角色副本一致。restore/build 仍报告既有 ImageSharp 3.1.12 的 NU1902/NU1903 安全审计警告。
+
+**桌面边界**：本轮只验证角色格式、运行时加载和发布包内容；没有在真实 Windows 桌面逐项观察两个新角色的透明命中、动画、拖拽或长期资源行为，不能把发布包检查代替桌面验收。
+
 # 2026-10-12 GitHub 仓库清理
 
 **范围**：远端默认分支为 `codex/bootstrap`。完整 `vendor/esheep/` 包含 1,130 个文件，共 12,531,708 字节，当前产品源码和解决方案不依赖它。移除快照、4 个上游专用脚本、只为上游设置的 `.gitattributes` 和根目录重复需求文件。保留产品测试、开发工具、角色模板、已确认的设计规则、许可证和审计摘要。

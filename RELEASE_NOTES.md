@@ -1,5 +1,10 @@
 # Unreleased
 
+## Starter roles
+
+- Bundle the supplied color and line-art Yimy sprite sheets as `Characters/咿米_Yimy/sprite.png` and `Characters/咿米_Line/sprite.png` alongside `slime`.
+- Both supplied files are transparent 1254×1254 PNGs despite their `.jpg` source filenames; the packaged sprites retain their original bytes.
+
 ## UI Logo
 
 - Added the supplied YimyWalk logo to the lower-left of the manager sidebar.
